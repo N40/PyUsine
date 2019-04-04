@@ -16,7 +16,7 @@ public:
 
     void PySetClass(string const &usine_initfile, Bool_t is_verbose, string const &output_dir){
             SetClass(usine_initfile, is_verbose, output_dir, f_log);
-            UpdateFitParsAndFitData(usine_initfile, is_verbose, False);
+            UpdateFitParsAndFitData(usine_initfile, is_verbose, false);
         }
 
     Double_t PyChi2(std::vector<double> const v_pars){
