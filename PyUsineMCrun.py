@@ -5,8 +5,6 @@ print('Running on PyMC3 v{}'.format(pm.__version__))
 import theano
 import theano.tensor as tt
 
-import seaborn as sns
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
