@@ -127,7 +127,8 @@ def main():
         trace = pm.sample(N_run,
                         progressbar = 0,
 			step = step,
-                        chains = N_chains,
+                        cores = max(6,N_chains),
+			chains = N_chains,
                         tune = N_tune)
         
     f.close()
