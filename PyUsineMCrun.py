@@ -6,7 +6,6 @@ import theano
 import theano.tensor as tt
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import PyProp as PP
 
@@ -60,7 +59,7 @@ def loglike_chi2(theta):
     f = open("logger.txt",'a+')    
     f.write("{:15}  {:15}  {:15}     {}\n".format(round(time()-t0,3), round(chi2,3),  round(result,3), theta))
     
-    if (result < -971660.0 and InBoundary):
+    if (result < -900000.0 and InBoundary):
         f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
         print(InBoundary)
         global ParFile
@@ -126,7 +125,8 @@ def main():
         global t0
         t0 = time()
         trace = pm.sample(N_run,
-                        step = step,
+                        progressbar = 0,
+			step = step,
                         chains = N_chains,
                         tune = N_tune)
         
