@@ -88,11 +88,12 @@ def main():
         if bool(InitVals[i][4]):  #This position is the bool output of IsLogSampling
             VarNames[i] = "LOG10_" + VarNames[i]
             
+
+
+    # SETTING PYMC3 PARAMETERS
     basic_model = pm.Model()
 
     ext_fct = TheanWrapper(loglike_chi2)
-
-    # SETTING PYMC3 PARAMETERS
     with basic_model:
         # Priors for unknown model parameters
         Priors = []
@@ -129,6 +130,7 @@ def main():
         t0 = time()
         trace = pm.sample(N_run,
                         step = step,
+                        progressbar = int((sys.argv[5]== 0)),
                         chains = N_chains,
                         cores = min(N_chains,6),
                         tune = N_tune)
