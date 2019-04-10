@@ -50,9 +50,12 @@ def loglike_chi2(theta):
     
     InBoundary = True
     for par,val in zip(theta,InitVals):
-        if not(val[1] <= par <= val[2]):
+        if (val[1] > par or par > val[2]):
             chi2 = 2.0e40
             InBoundary = False
+            
+#        if(chi2 > 1000):
+#        	  print(val[1], par, val[2], InBoundary)
         
     if InBoundary:
         chi2 = run.PyChi2(theta)    
@@ -60,13 +63,12 @@ def loglike_chi2(theta):
     result = (-0.5*chi2)
 
     f = open("logger.txt",'a+')    
-    f.write("{:15}  {:15}  {:15}     {}\n".format(round(time()-t0,3), round(chi2,3),  round(result,3), theta))
+    f.write("{:15}  {:15}  {:15}   {:8}   {}\n".format(round(time()-t0,3), round(chi2,3),  round(result,3), InBoundary, theta))
     
     if (result < -971660.0 and InBoundary):
         f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
-        print(InBoundary)
         global ParFile
-        run.PySetClass(ParFile, 1, "OUT")
+        run.PySetClass(ParFile, 0, "OUT")
 
     f.close()
 
@@ -82,6 +84,7 @@ def main():
     run.PySetLogFile("run.log")
     run.PySetClass(ParFile, 1, "OUT")
 
+    global InitVals
     InitVals = run.PyGetInitVals()
     VarNames = run.PyGetFreeParNames().split(",")
     for i in range(len(VarNames)):
@@ -98,7 +101,7 @@ def main():
         Priors = []
         print ('found {} free parameters, using the following priors:'.format(len(VarNames)))
         for name, vals in zip(VarNames, InitVals):
-            print('{:10}{:10}{:10}'.format(name, vals[0], vals[3]*1.2))
+            print('{:10}{:10}{:10}'.format(name, vals[0], vals[3]*1.5))
             P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.5)
             Priors.append(P)
         
@@ -130,6 +133,7 @@ def main():
         trace = pm.sample(N_run,
                         step = step,
                         chains = N_chains,
+                        cores = min(N_chains,6),
                         tune = N_tune)
         
     f.close()
