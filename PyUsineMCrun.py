@@ -120,6 +120,8 @@ def main():
         N_tune = int(sys.argv[3])
     if sys.argv[4]:
         N_chains = int(sys.argv[4])
+
+    IsProgressbar = int(sys.argv[5])
     
     print ('\n using configuration N_run = {}, N_tune = {}, N_chains = {}\n'.format(N_run,N_tune,N_chains))
 
@@ -130,7 +132,7 @@ def main():
         t0 = time()
         trace = pm.sample(N_run,
                         step = step,
-                        progressbar = int((sys.argv[5]== 0)),
+                        progressbar = IsProgressbar,
                         chains = N_chains,
                         cores = min(N_chains,6),
                         tune = N_tune)
