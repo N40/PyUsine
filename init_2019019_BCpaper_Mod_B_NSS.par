@@ -1,0 +1,287 @@
+#______________________________________________________________________________
+# INITIALISATION FILE (read/stored by TUInitParList::SetClass())
+# N.B.: line starting with # is a comment
+#
+# Description:
+# -----------
+# List of parameters and their values/dependences loaded before any USINE run
+# (CRs to propagate, XS files, ISM, transport, and source description...).
+# Fit parameters are also selected in this file: no need to recompile!
+#
+# Format:   'group @ subgroup @ parameter @ M=? @ value'
+# ------
+#   - 'group', 'subgroup', and 'parameter': predefined keywords (do not edit!)
+#   - 'M=?': predefined status of parameter (do not edit!)
+#       → M=1 for multi-valued parameter (e.g., allows several XS files)
+#       → M=0 for single-valued parameter
+#   - value: value of the parameters (user-editable)
+#
+# Looking for a parameter syntax? The meaning of a group/subgroup?
+#   → search the doc online or at $USINE/doc/_build/html/syntax.html
+#______________________________________________________________________________
+
+##Check list 
+# ErrType, data to fit, Secondaries, normlist, model, param to fit
+#./bin/usine -m2  inputs/init_2019019_BCpaper.par  output/results_paper/Model_B/0_iteration/   1    1    1 > output/results_paper/Model_B/0_iteration/monitor.txt
+
+# DATA
+######
+Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/crdata_crdb20170523_noAMS_BC.dat
+#AMS02
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_H_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_He_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_Li_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_Be_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_B_rigidity.USINE
+Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_C_rigidity.USINE
+Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_O_rigidity.USINE
+Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_N_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_LiC_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_LiO_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_BeC_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_BeO_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_BC_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_BO_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_newBC_rigidity.USINE
+Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_newBCgeo_rigidity.USINE
+
+
+# AMS02
+Base  @ CRData      @ NormList          @ M=0 @ H,He,C,O,N:AMS02|50.|kR;F,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,K,Ca,Sc,Ti,V,Cr,Mn,Fe,Ni:HEAO|10.6|kEkn
+
+Base  @ EnergyGrid  @ NBins             @ M=0 @ 200
+Base  @ EnergyGrid  @ NUC_EknRange      @ M=0 @ [1.e-3,5.e3]
+
+# FOR ANTIPROTONS
+#Base  @ EnergyGrid  @ NBins             @ M=0 @ 1000
+#Base  @ EnergyGrid  @ NUC_EknRange      @ M=0 @ [1.e-3,1.e7]
+
+Base  @ EnergyGrid  @ ANTINUC_EknRange  @ M=0 @ [1e-2,1.e4]
+Base  @ EnergyGrid  @ LEPTONS_EkRange   @ M=0 @ [1e-2,1.e4]
+Base  @ ListOfCRs   @ fAtomicProperties @ M=0 @ $USINE/inputs/atomic_properties.dat
+Base  @ ListOfCRs   @ fChartsForCRs     @ M=0 @ $USINE/inputs/crcharts_Zmax30_ghost97.dat
+Base  @ ListOfCRs   @ IsLoadGhosts      @ M=0 @ false
+#Base @ ListOfCRs   @ ListOfCRs         @ M=0 @ [10B,16O]
+#Base @ ListOfCRs   @ ListOfCRs         @ M=0 @ [1H,58Fe]
+Base  @ ListOfCRs   @ ListOfCRs         @ M=0 @ [1H,30Si]
+#Base  @ ListOfCRs   @ ListOfCRs         @ M=0 @ [1H-bar,30Si]
+
+
+Base  @ ListOfCRs   @ ListOfParents     @ M=0 @ 1H-bar:1H,2H,3He,4He,12C,13C,14N,15N,16O,17O,18O
+
+
+Base  @ ListOfCRs   @ PureSecondaries   @ M=0 @ 2H,3He,Li,Be,B,13C,15N,17O,18O
+Base  @ ListOfCRs   @ SSRelativeAbund   @ M=0 @ $USINE/inputs/solarsystem_abundances2003.dat
+Base  @ MediumCompo @ Targets           @ M=0 @ H,He
+Base  @ XSections   @ Tertiaries        @ M=0 @ 1H-bar,2H-bar
+
+# PRODUCTION XS
+Base  @ XSections   @ fProd             @ M=1 @ $USINE/inputs/XS_NUCLEI/sigProdGALPROP17_OPT12.dat
+#Base @ XSections   @ fProd             @ M=1 @ $USINE/inputs/XS_NUCLEI/sigProdWebber03.dat
+
+# ANTINUCLEI PRODUCTION XS
+#Base  @ XSections   @ fProd             @ M=1 @ $USINE/inputs/XS_ANTINUC/dSdEProd_pbar_1H4He+HHe_Donato01.dat
+#Base  @ XSections   @ fProd             @ M=1 @ $USINE/inputs/XS_ANTINUC/dSdEProd_pbar_KorsmeierDonatoDiMauro2018_paramIB.dat
+#Base  @ XSections   @ fProd             @ M=1 @ $USINE/inputs/XS_ANTINUC/dSdEProd_pbar_KorsmeierDonatoDiMauro2018_paramIIB.dat
+
+
+#Base  @ XSections   @ fProd             @ M=1 @ $USINE/inputs/XS_ANTINUC/dSdEProd_dbar_1H4He+HHe_Duperray05_Coal79MeV.dat
+#Base  @ XSections   @ fProd             @ M=1 @ $USINE/inputs/XS_ANTINUC/dSdEProd_dbar_pbar+HHe_Duperray05_Coal79MeV.dat
+
+
+# DESTRUCTION XS
+Base  @ XSections   @ fTotInelAnn       @ M=1 @ $USINE/inputs/XS_NUCLEI/sigInelTripathi99+Coste12.dat
+
+
+
+
+# MODEL 1D
+##########
+Model1DKisoVc  @ Geometry       @ ParNames         @ M=0 @ L,h,rhole
+Model1DKisoVc  @ Geometry       @ ParUnits         @ M=0 @ kpc,kpc,kpc
+Model1DKisoVc  @ Geometry       @ ParVals          @ M=0 @ 10.,0.1,0.0
+
+
+Model1DKisoVc  @ Geometry       @ TAxis            @ M=0 @ -
+Model1DKisoVc  @ Geometry       @ XAxis            @ M=0 @ z:[0,L],10,LIN
+Model1DKisoVc  @ Geometry       @ YAxis            @ M=0 @ -
+Model1DKisoVc  @ Geometry       @ ZAxis            @ M=0 @ -
+Model1DKisoVc  @ Geometry       @ XSun             @ M=0 @ -
+Model1DKisoVc  @ Geometry       @ YSun             @ M=0 @ -
+Model1DKisoVc  @ Geometry       @ ZSun             @ M=0 @ -
+Model1DKisoVc  @ ISM            @ ParNames         @ M=0 @ -
+Model1DKisoVc  @ ISM            @ ParUnits         @ M=0 @ -
+Model1DKisoVc  @ ISM            @ ParVals          @ M=0 @ -
+Model1DKisoVc  @ ISM            @ Density          @ M=1 @ HI:FORMULA|0.867
+Model1DKisoVc  @ ISM            @ Density          @ M=1 @ HII:FORMULA|0.033
+Model1DKisoVc  @ ISM            @ Density          @ M=1 @ H2:FORMULA|0.
+Model1DKisoVc  @ ISM            @ Density          @ M=1 @ He:FORMULA|0.1
+Model1DKisoVc  @ ISM            @ Te               @ M=0 @ FORMULA|1.e4
+Model1DKisoVc  @ SrcPointLike   @ Species          @ M=1 @ -
+Model1DKisoVc  @ SrcPointLike   @ SpectAbundInit   @ M=1 @ -
+Model1DKisoVc  @ SrcPointLike   @ SpectTempl       @ M=1 @ -
+Model1DKisoVc  @ SrcPointLike   @ SpectValsPerCR   @ M=1 @ -
+Model1DKisoVc  @ SrcPointLike   @ SrcXPosition     @ M=1 @ -
+Model1DKisoVc  @ SrcPointLike   @ SrcYPosition     @ M=1 @ -
+Model1DKisoVc  @ SrcPointLike   @ SrcZPosition     @ M=1 @ -
+Model1DKisoVc  @ SrcPointLike   @ TStart           @ M=1 @ -
+Model1DKisoVc  @ SrcPointLike   @ TStop            @ M=1 @ -
+Model1DKisoVc  @ SrcSteadyState @ Species          @ M=1 @ ASTRO_STD|ALL
+Model1DKisoVc  @ SrcSteadyState @ SpectAbundInit   @ M=1 @ ASTRO_STD|kSSISOTFRAC,kSSISOTABUND,kFIPBIAS
+Model1DKisoVc  @ SrcSteadyState @ SpectTempl       @ M=1 @ ASTRO_STD|POWERLAW|q
+
+
+Model1DKisoVc @ SrcSteadyState @ SpectValsPerCR   @ M=1 @ ASTRO_STD|q[PERCR:DEFAULT=1.e-5, 1H = 1.0e-3.975357, 4HE = 1.0e-4.424202, 12C = 1.0e-5.878166, 16O = 1.0e-5.712986, 14N = 1.0e-7.248600]; alpha[SHARED:2.35];eta_s[SHARED:-1.]
+
+#ModelA SOURCE
+
+#ModelB SOURCE
+
+Model1DKisoVc  @ SrcSteadyState @ SpatialTempl     @ M=1 @ ASTRO_STD|-
+Model1DKisoVc  @ SrcSteadyState @ SpatialValsPerCR @ M=1 @ ASTRO_STD|-
+
+# TRANSPORT PARAMETERS
+######################
+
+# MODEL B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B 
+Model1DKisoVc  @ Transport      @ ParNames         @ M=0 @ Va, Vc, K0, delta, Rbreak, Deltabreak, sbreak, Rlow, deltalow, slow
+Model1DKisoVc  @ Transport      @ ParUnits         @ M=0 @ km/s, km/s, kpc^2/Myr, -, GV, -, -, GV, -, -
+Model1DKisoVc  @ Transport      @ Wind             @ M=1 @ W0:FORMULA|Vc
+Model1DKisoVc  @ Transport      @ VA               @ M=0 @ FORMULA|Va
+Model1DKisoVc  @ Transport      @ K                @ M=1 @ K00:FORMULA|K0*beta*Rig^delta*(1+(Rlow/Rig)^((deltalow+delta)/slow))^slow*(1+(Rig/Rbreak)^(Deltabreak/sbreak))^(-sbreak)
+Model1DKisoVc  @ Transport      @ Kpp              @ M=0 @ FORMULA|(4./3.)*(Va*1.022712e-3*beta*Etot)^2/(delta*(4-delta^2)*(4-delta)*K00)
+
+### ITERATIONS ###
+## FIRST GUESS
+#Model1DKisoVc  @ Transport      @ ParVals          @ M=0 @ 6.0, 0.1, 0.082738, 5.113676e-01, 312., 0.14, 0.04, 4.426535e+00, 3.887298e-01, 5.0e-3
+## ITERATION 0 BC
+Model1DKisoVc  @ Transport      @ ParVals          @ M=0 @ 6.0, 0.1, 1.0e-1.035984, 4.897201e-01,  312., 0.14, 0.04, 4.386436e+00, 4.151716e-01, 5.00e-02
+## ITERATION 1 CO
+
+
+
+SolMod0DFF @ Base @ ParNames @ M=0 @ phi
+SolMod0DFF @ Base @ ParUnits @ M=0 @ GV
+SolMod0DFF @ Base @ ParVals  @ M=0 @ 0.5
+SolMod0DFF @ Base @ Rig0     @ M=0 @ 0.2
+
+
+# SOURCE SPECTRA
+# Single power-law
+TemplSpectrum @ POWERLAW        @ ParNames   @ M=0 @ q,alpha,eta_s
+TemplSpectrum @ POWERLAW        @ ParUnits   @ M=0 @ /(GeV/n/m3/Myr),-,-
+TemplSpectrum @ POWERLAW        @ Definition @ M=0 @ FORMULA|q*beta^(eta_s)*Rig^(-alpha)
+
+
+TemplSpectrum @ TEST            @ ParNames   @ M=0 @ q,alpha,eta_s
+TemplSpectrum @ TEST            @ ParUnits   @ M=0 @ /(GeV/n/m3/Myr),-,-
+TemplSpectrum @ TEST            @ Definition @ M=0 @ FORMULA|q*beta^(eta_s)*Rig^(-alpha)
+
+TemplSpatialDist @ CST            @ ParNames   @ M=0 @ -
+TemplSpatialDist @ CST            @ ParUnits   @ M=0 @ -
+TemplSpatialDist @ CST            @ Definition @ M=0 @ FORMULA|1
+
+UsineRun  @ Calculation @ BC_ANTINUC_LE      @ M=0 @ kD2NDLNEKN2_ZERO
+UsineRun  @ Calculation @ BC_ANTINUC_HE      @ M=0 @ kNOCHANGE
+UsineRun  @ Calculation @ BC_LEPTON_LE       @ M=0 @ kNOCURRENT
+UsineRun  @ Calculation @ BC_LEPTON_HE       @ M=0 @ kNOCURRENT
+UsineRun  @ Calculation @ BC_NUC_LE          @ M=0 @ kD2NDLNEKN2_ZERO
+UsineRun  @ Calculation @ BC_NUC_HE          @ M=0 @ kNOCHANGE
+UsineRun  @ Calculation @ EPS_ITERCONV       @ M=0 @ 1.e-6
+UsineRun  @ Calculation @ EPS_INTEGR         @ M=0 @ 1.e-4
+UsineRun  @ Calculation @ EPS_NORMDATA       @ M=0 @ 1.e-10
+UsineRun  @ Calculation @ IsUseNormList      @ M=0 @ true
+#UsineRun @ Display     @ QtiesExpsEType     @ M=0 @ He:AMS,BESS:kEKN;B/C:AMS:kR
+UsineRun  @ Display     @ QtiesExpsEType     @ M=0 @ B/C,B/O,Be/O,Li/O,H,He,Li,Be,B,C,N,O:AMS02:kR;
+#UsineRun  @ Display     @ QtiesExpsEType     @ M=0 @ ALL
+UsineRun  @ Display     @ ErrType            @ M=0 @ kERRTOT
+#UsineRun  @ Display     @ ErrType            @ M=0 @ kERRSTAT
+
+UsineRun  @ Display     @ FluxPowIndex       @ M=0 @ 2.8
+UsineRun  @ Models      @ Propagation        @ M=1 @ Model1DKisoVc
+UsineRun  @ Models      @ SolarModulation    @ M=1 @ SolMod0DFF
+
+UsineRun  @ OnOff       @ IsDecayBETA        @ M=0 @ true
+UsineRun  @ OnOff       @ IsDecayFedBETA     @ M=0 @ true
+UsineRun  @ OnOff       @ IsDecayEC          @ M=0 @ false
+UsineRun  @ OnOff       @ IsDecayFedEC       @ M=0 @ false
+UsineRun  @ OnOff       @ IsDestruction      @ M=0 @ true
+UsineRun  @ OnOff       @ IsELossAdiabatic   @ M=0 @ true
+UsineRun  @ OnOff       @ IsELossBremss      @ M=0 @ false
+UsineRun  @ OnOff       @ IsELossCoulomb  	 @ M=0 @ true
+UsineRun  @ OnOff       @ IsELossIon  		 @ M=0 @ true
+UsineRun  @ OnOff       @ IsELossIC          @ M=0 @ false
+UsineRun  @ OnOff       @ IsELossSynchrotron @ M=0 @ false
+UsineRun  @ OnOff       @ IsEReacc           @ M=0 @ true
+UsineRun  @ OnOff       @ IsPrimExotic       @ M=0 @ false
+UsineRun  @ OnOff       @ IsPrimStandard     @ M=0 @ true
+UsineRun  @ OnOff       @ IsSecondaries      @ M=0 @ true
+UsineRun  @ OnOff       @ IsTertiaries       @ M=0 @ true
+UsineRun  @ OnOff       @ IsWind       		 @ M=0 @ true
+
+
+# FIT SETUP
+###########
+#UsineFit  @ Config   @ Minimiser        @ M=0 @ Minuit
+UsineFit  @ Config   @ Minimiser        @ M=0 @ Minuit2
+UsineFit  @ Config   @ Algorithm        @ M=0 @ combined
+UsineFit  @ Config   @ NMaxCall         @ M=0 @ 1000000
+UsineFit  @ Config   @ Tolerance        @ M=0 @ 0.5
+UsineFit  @ Config   @ Precision        @ M=0 @ 1.e-10
+UsineFit  @ Config   @ PrintLevel       @ M=0 @ 2
+UsineFit  @ Config   @ IsMINOS          @ M=0 @ true
+UsineFit  @ Config   @ IsUseBinRange    @ M=0 @ true
+UsineFit  @ Config   @ NExtraInBinRange @ M=0 @ 0
+#UsineFit @ TOAData  @ QtiesExpsEType   @ M=0 @ He:AMS,BESS:kEKN
+#UsineFit @ TOAData  @ QtiesExpsEType   @ M=0 @ He:AMS,BESS:kEKN;B/C:AMS:KR
+#UsineFit  @ TOAData  @ QtiesExpsEType   @ M=0 @ Li/O:AMS:KR
+
+
+# DATA TO FIT
+#############
+UsineFit  @ TOAData  @ QtiesExpsEType   @ M=0 @ B/C:AMS:kR
+#UsineFit  @ TOAData  @ QtiesExpsEType   @ M=0 @ C,O:AMS:kR
+
+
+#UsineFit @ TOAData  @ ErrType          @ M=0 @ kERRTOT
+#UsineFit @ TOAData  @ ErrType          @ M=0 @ kERRSTAT
+UsineFit  @ TOAData  @ ErrType          @ M=0 @ kERRCOV:$USINE/inputs/CRDATA_COVARIANCE/
+UsineFit  @ TOAData  @ EminData         @ M=0 @ 0.001
+UsineFit  @ TOAData  @ EmaxData         @ M=0 @ 20000.
+UsineFit  @ TOAData  @ TStartData       @ M=0 @ 1950-01-01_00:00:00
+UsineFit  @ TOAData  @ TStopData        @ M=0 @ 2100-01-01_00:00:00
+
+# FREE PARAMETERS
+#################
+UsineFit  @ FreePars @ Geometry         @ M=1 @ -
+UsineFit  @ FreePars @ ISM              @ M=1 @ -
+UsineFit  @ FreePars @ SrcPointLike     @ M=1 @ -
+
+#SMOD 
+UsineFit  @ FreePars @ Modulation       @ M=1 @ phi_AMS02_201105201605_:NUISANCE,LIN,[0.3,1.1],0.73,0.1
+
+### MODEL B
+  
+UsineFit  @ FreePars @ Transport        @ M=1 @ delta:FIT,LIN,[0.1,0.9],5.237220e-01,0.0138
+UsineFit  @ FreePars @ Transport        @ M=1 @ K0:FIT,LOG,[-2.5,-0.1],-1.112857e+00,0.028
+UsineFit  @ FreePars @ Transport        @ M=1 @ Rlow:FIT,LIN,[2.0,10.0],4.414892,0.24
+UsineFit  @ FreePars @ Transport        @ M=1 @ deltalow:FIT,LIN,[0.05,2.2],9.050859e-01,0.33
+
+UsineFit  @ FreePars @ Transport        @ M=1 @ Deltabreak:NUISANCE,LIN,[0.0,1.0],+1.903587e-01,0.1
+UsineFit  @ FreePars @ Transport        @ M=1 @ sbreak:    NUISANCE,LIN,[0.005,0.3],+4.148995e-02,0.1
+UsineFit  @ FreePars @ Transport        @ M=1 @ Rbreak:    NUISANCE,LOG,[2.0,2.8],+2.367336e+00,0.1
+
+UsineFit  @ Config   @ Strategy         @ M=0 @ 1
+UsineFit  @ Outputs  @ IsPrintCovMatrix     @ M=0 @ true
+
+UsineFit @ FreePars @ SrcSteadyState   @ M=1 @ alpha:FIXED,LIN,[1.5.,4.0], +2.316822e+00, 0.1
+
+
+#######
+#12C + H -> 11B
+UsineFit @ FreePars @ XSection         @ M=1 @ Norm_12C+H->11B:NUISANCE,LIN,[0.2,1.8],1.09,0.25
+UsineFit @ FreePars @ XSection         @ M=1 @ EAxisScale_12C+H->11B:FIXED,LIN,[0.5,1.5],1.,0.
+UsineFit  @ FreePars @ XSection         @ M=1 @ SlopeLE_12C+H->11B:NUISANCE,LIN,[-0.2,0.2],0.03,0.04
+UsineFit  @ FreePars @ XSection         @ M=1 @ EThresh_12C+H->11B:FIXED,LIN,[0.5,2.],8.,0.
+
+
