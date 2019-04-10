@@ -92,14 +92,17 @@ def main():
 
     # SETTING PYMC3 PARAMETERS
     basic_model = pm.Model()
-
+    
     ext_fct = TheanWrapper(loglike_chi2)
+    
     with basic_model:
+        ProScale = 2. # Scale for the sampling normal
+        
         # Priors for unknown model parameters
         Priors = []
         print ('found {} free parameters, using the following priors:'.format(len(VarNames)))
         for name, vals in zip(VarNames, InitVals):
-            print('{:10}{:10}{:10}'.format(name, vals[0], vals[3]*1.5))
+            print('{:10}{:10}{:10}'.format(name, vals[0], vals[3]*ProScale))
             P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.5)
             Priors.append(P)
         
@@ -123,11 +126,14 @@ def main():
 
     IsProgressbar = int(sys.argv[5])
     
+
+    
     print ('\n using configuration N_run = {}, N_tune = {}, N_chains = {}\n'.format(N_run,N_tune,N_chains))
+    print (IsProgressbar)
 
     with basic_model:
         # draw 500 posterior samples
-        step = pm.Metropolis()
+        step = pm.Metropolis(S = ProScale* np.diag([var[3] for var in InitVals]))
         global t0
         t0 = time()
         trace = pm.sample(N_run,
