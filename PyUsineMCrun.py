@@ -5,10 +5,7 @@ print('Running on PyMC3 v{}'.format(pm.__version__))
 import theano
 import theano.tensor as tt
 
-import seaborn as sns
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
 import PyProp as PP
 
@@ -65,7 +62,7 @@ def loglike_chi2(theta):
     f = open("logger.txt",'a+')    
     f.write("{:15}  {:15}  {:15}   {:8}   {}\n".format(round(time()-t0,3), round(chi2,3),  round(result,3), InBoundary, theta))
     
-    if (result < -971660.0 and InBoundary):
+    if (result < -900000.0 and InBoundary):
         f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
         global ParFile
         run.PySetClass(ParFile, 0, "OUT")
