@@ -86,8 +86,7 @@ def main():
     VarNames = run.PyGetFreeParNames().split(",")
     for i in range(len(VarNames)):
         if bool(InitVals[i][4]):  #This position is the bool output of IsLogSampling
-            VarNames[i] = "LOG10_" + VarNames[i]
-            
+            VarNames[i] = "LOG10_" + VarNames[i]            
 
 
     # SETTING PYMC3 PARAMETERS
@@ -102,6 +101,8 @@ def main():
         Priors = []
         print ('found {} free parameters, using the following priors:'.format(len(VarNames)))
         for name, vals in zip(VarNames, InitVals):
+            if (vals[3] == 0.):
+                continue
             print('{:10}{:10}{:10}'.format(name, vals[0], vals[3]*ProScale))
             P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.5)
             Priors.append(P)
@@ -140,7 +141,6 @@ def main():
                         step = step,
                         progressbar = IsProgressbar,
                         chains = N_chains,
-                        cores = min(N_chains,6),
                         tune = N_tune)
         
     f.close()

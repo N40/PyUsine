@@ -35,19 +35,19 @@ Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/crdata_crdb2017052
 #Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_B_rigidity.USINE
 Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_C_rigidity.USINE
 Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_O_rigidity.USINE
-Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_N_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_N_rigidity.USINE
 #Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_LiC_rigidity.USINE
 #Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_LiO_rigidity.USINE
 #Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_BeC_rigidity.USINE
 #Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_BeO_rigidity.USINE
 #Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_BC_rigidity.USINE
 #Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_BO_rigidity.USINE
-#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_newBC_rigidity.USINE
-Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_newBCgeo_rigidity.USINE
+Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_newBC_rigidity.USINE
+#Base  @ CRData      @ fCRData           @ M=1 @ $USINE/inputs/NEW_AMS02_DATA/AMS02_published_newBCgeo_rigidity.USINE
 
 
 # AMS02
-Base  @ CRData      @ NormList          @ M=0 @ H,He,C,O,N:AMS02|50.|kR;F,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,K,Ca,Sc,Ti,V,Cr,Mn,Fe,Ni:HEAO|10.6|kEkn
+Base  @ CRData      @ NormList          @ M=0 @ H,He,C,O:AMS02|50.|kR;N,F,Ne,Na,Mg,Al,Si,P,S,Cl,Ar,K,Ca,Sc,Ti,V,Cr,Mn,Fe,Ni:HEAO|10.6|kEkn
 
 Base  @ EnergyGrid  @ NBins             @ M=0 @ 200
 Base  @ EnergyGrid  @ NUC_EknRange      @ M=0 @ [1.e-3,5.e3]
