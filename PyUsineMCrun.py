@@ -136,7 +136,7 @@ def main():
 
     with basic_model:
         # draw 500 posterior samples
-        step = pm.Metropolis(S = ProScale* np.diag([var[3] for var in InitVals]))
+        step = pm.Metropolis(S = ProScale* np.diag([var[3]**2 for var in InitVals]))
         global t0
         t0 = time()
         trace = pm.sample(N_run,
