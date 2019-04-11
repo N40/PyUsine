@@ -24,7 +24,7 @@ InitVals = []
 class TheanWrapper(tt.Op):
     itypes = [tt.dvector] # expects a vector of parameter values when called
     otypes = [tt.dscalar] # outputs a single scalar value
-    
+
     def __init__(self, likefct):
         """
         loglike:
@@ -39,29 +39,29 @@ class TheanWrapper(tt.Op):
         # call the log-likelihood function
         ret_like = self.likelihood(theta)
         outputs[0][0] = np.array(ret_like) # output
-        
+
 def loglike_chi2(theta):
     global run
     global InitVals
     global t0
-    
+
     InBoundary = True
     for par,val in zip(theta,InitVals):
         if (val[1] > par or par > val[2]):
             chi2 = 2.0e40
             InBoundary = False
-            
+
 #        if(chi2 > 1000):
 #        	  print(val[1], par, val[2], InBoundary)
-        
+
     if InBoundary:
-        chi2 = run.PyChi2(theta)    
+        chi2 = run.PyChi2(theta)
 
     result = (-0.5*chi2)
 
-    f = open("logger.txt",'a+')    
+    f = open("logger.txt",'a+')
     f.write("{:15}  {:15}  {:15}   {:8}   {}\n".format(round(time()-t0,3), round(chi2,3),  round(result,3), InBoundary, theta))
-    
+
     if (result < -900000.0 and InBoundary):
         f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
         global ParFile
@@ -86,32 +86,34 @@ def main():
     VarNames = run.PyGetFreeParNames().split(",")
     for i in range(len(VarNames)):
         if bool(InitVals[i][4]):  #This position is the bool output of IsLogSampling
-            VarNames[i] = "LOG10_" + VarNames[i]            
+            VarNames[i] = "LOG10_" + VarNames[i]
 
 
     # SETTING PYMC3 PARAMETERS
     basic_model = pm.Model()
-    
+
     ext_fct = TheanWrapper(loglike_chi2)
-    
+
     with basic_model:
         ProScale = 2. # Scale for the sampling normal
-        
+
         # Priors for unknown model parameters
         Priors = []
         print ('found {} free parameters, using the following priors:'.format(len(VarNames)))
         for name, vals in zip(VarNames, InitVals):
             if (vals[3] == 0.):
+                VarNames.remove(name)
+                InitVals.remove(vals)
                 continue
             print('{:10}{:10}{:10}'.format(name, vals[0], vals[3]*ProScale))
             P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.5)
             Priors.append(P)
-        
+
         theta = tt.as_tensor_variable(Priors)
-        
+
         # Likelihood (sampling distribution) of observations
         likelihood = pm.DensityDist('likelihood',  lambda v: ext_fct(v), observed={'v': theta})
-    
+
     # RUNNING PYMC3
     f = open("logger.txt",'w+')
 
@@ -126,9 +128,9 @@ def main():
         N_chains = int(sys.argv[4])
 
     IsProgressbar = int(sys.argv[5])
-    
 
-    
+
+
     print ('\n using configuration N_run = {}, N_tune = {}, N_chains = {}\n'.format(N_run,N_tune,N_chains))
     print (IsProgressbar)
 
@@ -142,7 +144,7 @@ def main():
                         progressbar = IsProgressbar,
                         chains = N_chains,
                         tune = N_tune)
-        
+
     f.close()
 
     output_filename = 'result_{}:{}:{}_'.format(N_run*N_chains,N_tune,N_chains) + datetime.datetime.now().strftime("%d.%m.%Y_%H:%M")
