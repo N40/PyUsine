@@ -60,7 +60,8 @@ def loglike_chi2(theta):
     result = (-0.5*chi2)
 
     f = open("logger.txt",'a+')
-    f.write("{:15}  {:15}  {:4}   {}\n".format(round(time()-t0,3), round(chi2,3),  InBoundary, theta))
+    f.write("{:10}  {:15}  {:4}   ".format(round(time()-t0,3), round(chi2,3),  InBoundary))
+    f.write('[ ' + ' '.join(["{:12}".format(round(p,6)) for p in theta]) + '  ] \n')
 
     if (result < -900000.0 and InBoundary):
         f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
