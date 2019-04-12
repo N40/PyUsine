@@ -126,6 +126,7 @@ def main():
     N_run  = 500
     N_tune = 50
     N_chains = 3
+    N_cores = 1
     IsProgressbar = 0
     print (" >> len(sys.argv) = ",len(sys.argv))
     if len(sys.argv) >= 3:
@@ -136,6 +137,8 @@ def main():
         N_chains = int(sys.argv[4])
     if len(sys.argv) >= 6:
         IsProgressbar = int(sys.argv[5])
+    if len(sys.argv) >= 7:
+        N_cores = int(sys.argv[6])
 
 
     print ('\n >> using configuration N_run = {}, N_tune = {}, N_chains = {}\n'.format(N_run,N_tune,N_chains))
@@ -148,7 +151,7 @@ def main():
                         step = step,
                         progressbar = IsProgressbar,
                         chains = N_chains,
-                    #   cores = min(6, N_chains),
+                        cores = N_cores,
                         tune = N_tune  )
 
     f.close()
