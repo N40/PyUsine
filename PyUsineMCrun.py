@@ -60,7 +60,7 @@ def loglike_chi2(theta):
     result = (-0.5*chi2)
 
     f = open("logger.txt",'a+')
-    f.write("{:15}  {:15}  {:15}   {:8}   {}\n".format(round(time()-t0,3), round(chi2,3),  round(result,3), InBoundary, theta))
+    f.write("{:15}  {:15}  {:4}   {}\n".format(round(time()-t0,3), round(chi2,3),  InBoundary, theta))
 
     if (result < -900000.0 and InBoundary):
         f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
@@ -75,7 +75,7 @@ def main():
     # LOADING USINE CONFIGURATION
     global ParFile
     ParFile = sys.argv[1]
-    print ('loading configuration from {}'.format(ParFile))
+    print ('\n >> Loading configuration from {}'.format(ParFile))
 
     global run
     run.PySetLogFile("run.log")
@@ -88,6 +88,15 @@ def main():
         if bool(InitVals[i][4]):  #This position is the bool output of IsLogSampling
             VarNames[i] = "LOG10_" + VarNames[i]
 
+    # Sorting out Fixed variables
+    print ('\n >> Not regarding the following FIXED parameters:')
+    for name, vals in zip(VarNames, InitVals):
+        if (vals[3] == 0.):
+            VarNames.remove(name)
+            InitVals.remove(vals)
+            print('{:20}{:10}{:10}'.format(name, vals[0], vals[3]))
+
+
 
     # SETTING PYMC3 PARAMETERS
     basic_model = pm.Model()
@@ -99,13 +108,9 @@ def main():
 
         # Priors for unknown model parameters
         Priors = []
-        print ('found {} free parameters, using the following priors:'.format(len(VarNames)))
+        print ('\n >> Found {} free parameters, using the following priors:'.format(len(VarNames)))
         for name, vals in zip(VarNames, InitVals):
-            if (vals[3] == 0.):
-                VarNames.remove(name)
-                InitVals.remove(vals)
-                continue
-            print('{:10}{:10}{:10}'.format(name, vals[0], vals[3]*ProScale))
+            print('{:20}{:10}{:10}'.format(name, vals[0], vals[3]*ProScale))
             P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.5)
             Priors.append(P)
 
@@ -120,39 +125,38 @@ def main():
     N_run  = 500
     N_tune = 50
     N_chains = 3
-    if sys.argv[2]:
+    IsProgressbar = 0
+    print (" >> len(sys.argv) = ",len(sys.argv))
+    if len(sys.argv) >= 3:
         N_run = int(sys.argv[2])
-    if sys.argv[3]:
+    if len(sys.argv) >= 4:
         N_tune = int(sys.argv[3])
-    if sys.argv[4]:
+    if len(sys.argv) >= 5:
         N_chains = int(sys.argv[4])
+    if len(sys.argv) >= 6:
+        IsProgressbar = int(sys.argv[5])
 
-    IsProgressbar = int(sys.argv[5])
 
-
-
-    print ('\n using configuration N_run = {}, N_tune = {}, N_chains = {}\n'.format(N_run,N_tune,N_chains))
-    print (IsProgressbar)
+    print ('\n >> using configuration N_run = {}, N_tune = {}, N_chains = {}\n'.format(N_run,N_tune,N_chains))
 
     with basic_model:
-        # draw 500 posterior samples
-        step = pm.Metropolis(S = ProScale* np.diag([var[3]**2 for var in InitVals]))
+        step = pm.Metropolis(S = np.diag([ProScale*var[3]**2 for var in InitVals]))
         global t0
         t0 = time()
         trace = pm.sample(N_run,
                         step = step,
                         progressbar = IsProgressbar,
                         chains = N_chains,
-                        tune = N_tune)
+                    #   cores = min(6, N_chains),
+                        tune = N_tune  )
 
     f.close()
 
     output_filename = 'result_{}:{}:{}_'.format(N_run*N_chains,N_tune,N_chains) + datetime.datetime.now().strftime("%d.%m.%Y_%H:%M")
     print ('saving results as numpy array in {}'.format(output_filename))
 
-    with basic_model:
-    	post_data = np.array([trace[VarNames[i]] for i in range(len(VarNames))]).T
-    	np.savetxt(output_filename, post_data, delimiter=',', header = '#'+ str(VarNames))
+    post_data = np.array([trace[VarNames[i]] for i in range(len(VarNames))]).T
+    np.savetxt(output_filename, post_data, delimiter=',', header = '# '+ str(VarNames))
 
 
 if __name__ == "__main__":

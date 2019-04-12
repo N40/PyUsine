@@ -20,7 +20,7 @@
 #   → search the doc online or at $USINE/doc/_build/html/syntax.html
 #______________________________________________________________________________
 
-##Check list 
+##Check list
 # ErrType, data to fit, Secondaries, normlist, model, param to fit
 #./bin/usine -m2  inputs/init_2019019_BCpaper.par  output/results_paper/Model_B/0_iteration/   1    1    1 > output/results_paper/Model_B/0_iteration/monitor.txt
 
@@ -143,7 +143,7 @@ Model1DKisoVc  @ SrcSteadyState @ SpatialValsPerCR @ M=1 @ ASTRO_STD|-
 
 
 
-# MODEL B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B 
+# MODEL B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B B
 Model1DKisoVc  @ Transport      @ ParNames         @ M=0 @ Va, Vc, K0, delta, Rbreak, Deltabreak, sbreak, Rlow, deltalow, slow
 Model1DKisoVc  @ Transport      @ ParUnits         @ M=0 @ km/s, km/s, kpc^2/Myr, -, GV, -, -, GV, -, -
 Model1DKisoVc  @ Transport      @ Wind             @ M=1 @ W0:FORMULA|Vc
@@ -261,7 +261,7 @@ UsineFit  @ FreePars @ Geometry         @ M=1 @ -
 UsineFit  @ FreePars @ ISM              @ M=1 @ -
 UsineFit  @ FreePars @ SrcPointLike     @ M=1 @ -
 
-#SMOD 
+#SMOD
 # UsineFit  @ FreePars @ Modulation       @ M=1 @ phi_AMS02_201105201605_:NUISANCE,LIN,[0.3,1.1],0.73,0.1
 
 ### MODEL AB
@@ -284,7 +284,7 @@ UsineFit  @ FreePars @ Transport        @ M=1 @ deltalow:FIT,LIN,[0.005,5.0],+9.
 # UsineFit  @ FreePars @ Transport        @ M=1 @ Deltabreak:FIXED,LIN,[0.0,1.0],2.178040e-01,0.1
 # UsineFit  @ FreePars @ Transport        @ M=1 @ sbreak:    FIXED,LIN,[0.005,0.3],+4.232182e-02,0.001
 # UsineFit  @ FreePars @ Transport        @ M=1 @ Rbreak:    FIXED,LOG,[2.0,2.8],2.334282e+00,0.1
-# 
+#
 # UsineFit @ FreePars @ XSection         @ M=1 @ Norm_12C+H->11B:FIXED,LIN,[0.2,1.8],1.111529e+00,0.12
 # UsineFit @ FreePars @ XSection         @ M=1 @ EAxisScale_12C+H->11B:FIXED,LIN,[0.5,1.5],1.,0.
 # UsineFit  @ FreePars @ XSection         @ M=1 @ SlopeLE_12C+H->11B:FIXED,LIN,[-0.2,0.2],+9.699215e-02,0.15
@@ -319,7 +319,7 @@ UsineFit  @ Outputs  @ IsPrintCovMatrix     @ M=0 @ true
 # UsineFit  @ FreePars    @ XSection          @ M=1 @ Norm_12C+H->6Li:NUISANCE,LIN,[0.5,2.],0.87, 0.15
 # UsineFit  @ FreePars    @ XSection          @ M=1 @ EThresh_12C+H->6Li:FIXED,LIN,[0.5,2.],5.,0.0
 # UsineFit  @ FreePars    @ XSection          @ M=1 @ SlopeLE_12C+H->6Li:NUISANCE,LIN,[-1,1.],0.0, 0.15
-# 
+#
 # # Be Nuissance Inel
 # UsineFit  @ FreePars    @ XSection          @ M=1 @ Norm_16O+H:NUISANCE,LIN,[0.5,2.],1.03, 0.04
 # UsineFit  @ FreePars    @ XSection          @ M=1 @ EAxisScale_16O+H:NUISANCE,LIN,[0.5,1.5],0.7, 0.5
