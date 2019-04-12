@@ -95,7 +95,7 @@ def main():
     ext_fct = TheanWrapper(loglike_chi2)
 
     with basic_model:
-        ProScale = 2. # Scale for the sampling normal
+        ProScale = 1. # Scale for the sampling normal
 
         # Priors for unknown model parameters
         Priors = []
@@ -150,8 +150,10 @@ def main():
     output_filename = 'result_{}:{}:{}_'.format(N_run*N_chains,N_tune,N_chains) + datetime.datetime.now().strftime("%d.%m.%Y_%H:%M")
     print ('saving results as numpy array in {}'.format(output_filename))
 
-    post_data = np.array([trace[VarNames[i]] for i in range(len(VarNames))]).T
-    np.savetxt(output_filename, post_data, delimiter=',', header = '#'+ str(VarNames))
+    with basic_model:
+    	post_data = np.array([trace[VarNames[i]] for i in range(len(VarNames))]).T
+    	np.savetxt(output_filename, post_data, delimiter=',', header = '#'+ str(VarNames))
+
 
 if __name__ == "__main__":
     # execute only if run as a script
