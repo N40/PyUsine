@@ -38,9 +38,12 @@ public:
             InitPar.push_back(GetFitPars()->GetParEntry(l)->GetFitSampling());
             InitVals.push_back(InitPar);
         }
-
         return InitVals;
+    }
 
+    std::vector<int> PyIndicesPars(int i){
+        // 0 : FREE , 1 : FIXED , 2 : NUISANCE
+        return GetFitPars()->IndicesPars( gENUM_FREEPARTYPE(i) );
     }
 
 };
@@ -65,6 +68,7 @@ PYBIND11_MODULE(PyProp, m){
         .def("PyChi2"       , &PyRunPropagation::PyChi2)
         .def("PyGetFreeParNames", &PyRunPropagation::PyGetFreeParNames)
         .def("PyGetInitVals", &PyRunPropagation::PyGetInitVals)
+        .def("PyIndicesPars", &PyRunPropagation::PyIndicesPars)
         ;
 
     m.def("Null", [](double a){return a; } , "a"_a=5.5);

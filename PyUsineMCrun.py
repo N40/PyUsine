@@ -86,18 +86,21 @@ def main():
     global InitVals
     InitVals = run.PyGetInitVals()
     VarNames = run.PyGetFreeParNames().split(",")
+    FixedIndices = run.PyIndicesPars(1) # 1 : FIXED
+    FixedPars = []
     for i in range(len(VarNames)):
         if bool(InitVals[i][4]):  #This position is the bool output of IsLogSampling
             VarNames[i] = "LOG10_" + VarNames[i]
+        if i in FixedIndices:
+            FixedPars.append(VarNames[i])
 
-    # Sorting out Fixed variables
+    # SORTING OUT FIXED VARIABLES
     print ('\n >> Not regarding the following FIXED parameters:')
     for name, vals in zip(VarNames, InitVals):
-        if (vals[3] == 0.):
+        if (name in FixedPars):
             VarNames.remove(name)
             InitVals.remove(vals)
-            print('{:20}{:10}{:10}'.format(name, vals[0], vals[3]))
-
+            print('{:25}{:10}{:10}'.format(name, vals[0], vals[3]))
 
 
     # SETTING PYMC3 PARAMETERS
@@ -112,7 +115,7 @@ def main():
         Priors = []
         print ('\n >> Found {} free parameters, using the following priors:'.format(len(VarNames)))
         for name, vals in zip(VarNames, InitVals):
-            print('{:20}{:10}{:10}'.format(name, vals[0], vals[3]*ProScale))
+            print('{:25}{:10}{:10}'.format(name, vals[0], vals[3]*ProScale))
             P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.5)
             Priors.append(P)
 
