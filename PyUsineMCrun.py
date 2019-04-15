@@ -10,17 +10,9 @@ import numpy as np
 import PyProp as PP
 
 from time import time
-t0 = time()
-
-import datetime
-now = datetime.datetime.now()
-
-log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
-
 import sys
+import datetime
 
-run = PP.PyRunPropagation()
-InitVals = []
 
 # define a theano Op for our likelihood function
 class TheanWrapper(tt.Op):
@@ -43,27 +35,33 @@ class TheanWrapper(tt.Op):
         outputs[0][0] = np.array(ret_like) # output
 
 def loglike_chi2(theta):
+    theta = list(theta)
     global run
     global InitVals
     global t0
     global log_file_name
+    global S
+    chi2 = 0
 
-    InBoundary = True
+    InBoundary = 1
     for par,val in zip(theta,InitVals):
         if (val[1] > par or par > val[2]):
             chi2 = 2.0e40
-            InBoundary = False
+            InBoundary = 0
 
-#        if(chi2 > 1000):
-#        	  print(val[1], par, val[2], InBoundary)
-
-    if InBoundary:
+    stock = S.Check(theta)
+    if (stock):
+        InBoundary = str(InBoundary) + "X"
+        chi2 = stock
+    elif InBoundary:
+        InBoundary = str(InBoundary) + " "
         chi2 = run.PyChi2(theta)
+        S.Add(theta,chi2)
 
     result = (-0.5*chi2)
 
     f = open(log_file_name,'a+')
-    f.write("{:10}  {:15}  {:4}   ".format(round(time()-t0,3), round(chi2,3),  InBoundary))
+    f.write("{:10}  {:15}  {:6}  ".format(round(time()-t0,3), round(chi2,3),  InBoundary))
     f.write('[ ' + ' '.join(["{:12}".format(round(p,6)) for p in theta]) + '  ] \n')
 
     if (result < -900000.0 and InBoundary):
@@ -133,7 +131,7 @@ def main():
     N_chains = 3
     N_cores = 1
     IsProgressbar = 0
-    print (" >> len(sys.argv) = ",len(sys.argv))
+    print ("\n >> len(sys.argv) = ",len(sys.argv))
     if len(sys.argv) >= 3:
         N_run = int(sys.argv[2])
     if len(sys.argv) >= 4:
@@ -148,9 +146,11 @@ def main():
 
     print ('\n >> using configuration N_run = {}, N_tune = {}, N_chains = {}\n'.format(N_run,N_tune,N_chains))
 
+    global S
+    S = Storage_Container(5*N_chains)
+
     with basic_model:
-        print(np.sqrt(np.diag([ProScale*var[3]**2 for var in InitVals])))
-        step = pm.Metropolis(S = np.diag([ProScale*var[3]**2 for var in InitVals]))
+        step = pm.Metropolis(S = np.diag([(ProScale*var[3])**2 for var in InitVals]))
         global t0
         t0 = time()
         trace = pm.sample(N_run,
@@ -167,6 +167,50 @@ def main():
 
     post_data = np.array([trace[VarNames[i]] for i in range(len(VarNames))]).T
     np.savetxt(output_filename, post_data, delimiter=',', header = '# '+ str(VarNames))
+
+class Storage_Container():
+    '''
+    Storage in order to prevent from unnessesary Chi2 calculations
+    by re-using allready calculated values.
+    Most recenly used parameters are beeing kept while not regarded are beeing eliminated
+    when new ones are saved
+    '''
+    A_Chi2 = []
+    A_theta = []
+    n_ = -1
+
+    def __init__(self, n_ =5):
+        self.A_Chi2 = [0 for i in range(n_)]
+        self.A_theta = [[] for i in range(n_)]
+
+    def Add(self, theta, Chi2, i = 0):
+        self.A_Chi2.pop(i)
+        self.A_theta.pop(i)
+        self.A_Chi2.append(Chi2)
+        self.A_theta.append(theta)
+
+    def Check(self,theta):
+        chi2 = 0
+        try:
+            i = self.A_theta.index(theta)
+            chi2 = self.A_Chi2[i]
+            self.Add(theta, chi2, i)
+        except ValueError:
+            chi2 = False
+        return chi2
+
+# - Global varible definitions
+t0 = time()
+
+now = datetime.datetime.now()
+
+log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
+
+run = PP.PyRunPropagation()
+InitVals = []
+
+S = Storage_Container()
+# -
 
 
 if __name__ == "__main__":
