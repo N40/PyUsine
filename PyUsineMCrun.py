@@ -144,6 +144,7 @@ def main():
     print ('\n >> using configuration N_run = {}, N_tune = {}, N_chains = {}\n'.format(N_run,N_tune,N_chains))
 
     with basic_model:
+        print(np.sqrt(np.diag([ProScale*var[3]**2 for var in InitVals])))
         step = pm.Metropolis(S = np.diag([ProScale*var[3]**2 for var in InitVals]))
         global t0
         t0 = time()
