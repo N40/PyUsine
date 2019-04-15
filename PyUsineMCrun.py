@@ -15,6 +15,8 @@ t0 = time()
 import datetime
 now = datetime.datetime.now()
 
+log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
+
 import sys
 
 run = PP.PyRunPropagation()
@@ -44,6 +46,7 @@ def loglike_chi2(theta):
     global run
     global InitVals
     global t0
+    global log_file_name
 
     InBoundary = True
     for par,val in zip(theta,InitVals):
@@ -59,7 +62,7 @@ def loglike_chi2(theta):
 
     result = (-0.5*chi2)
 
-    f = open("logger.txt",'a+')
+    f = open(log_file_name,'a+')
     f.write("{:10}  {:15}  {:4}   ".format(round(time()-t0,3), round(chi2,3),  InBoundary))
     f.write('[ ' + ' '.join(["{:12}".format(round(p,6)) for p in theta]) + '  ] \n')
 
@@ -121,7 +124,9 @@ def main():
         likelihood = pm.DensityDist('likelihood',  lambda v: ext_fct(v), observed={'v': theta})
 
     # RUNNING PYMC3
-    f = open("logger.txt",'w+')
+    global log_file_name
+    print('\n >> Saving calculation steps in {}'.format(log_file_name) )
+    f = open(log_file_name,'w+')
 
     N_run  = 500
     N_tune = 50
