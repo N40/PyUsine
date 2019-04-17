@@ -185,7 +185,7 @@ def main():
         N_cores = int(sys.argv[6])
 
 
-    print ('\n >> using configuration N_run = {}, N_tune = {}, N_chains = {}\n'.format(N_run,N_tune,N_chains))
+    print ('\n >> using configuration N_run = {}, N_tune = {}, N_chains = {}, N_cores = \n'.format(N_run,N_tune,N_chains,N_cores))
 
     global S
     S = Storage_Container(5*N_chains)
