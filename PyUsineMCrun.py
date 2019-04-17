@@ -15,6 +15,37 @@ import datetime
 
 
 # define a theano Op for our likelihood function
+class Storage_Container():
+    '''
+    Storage in order to prevent from unnessesary Chi2 calculations
+    by re-using allready calculated values.
+    Most recenly used parameters are beeing kept while not regarded are beeing eliminated
+    when new ones are saved
+    '''
+    A_Chi2 = []
+    A_theta = []
+    n_ = -1
+
+    def __init__(self, n_ =5):
+        self.A_Chi2 = [0 for i in range(n_)]
+        self.A_theta = [[] for i in range(n_)]
+
+    def Add(self, theta, Chi2, i = 0):
+        self.A_Chi2.pop(i)
+        self.A_theta.pop(i)
+        self.A_Chi2.append(Chi2)
+        self.A_theta.append(theta)
+
+    def Check(self,theta):
+        chi2 = 0
+        try:
+            i = self.A_theta.index(theta)
+            chi2 = self.A_Chi2[i]
+            self.Add(theta, chi2, i)
+        except ValueError:
+            chi2 = False
+        return chi2
+
 class TheanWrapper(tt.Op):
     itypes = [tt.dvector] # expects a vector of parameter values when called
     otypes = [tt.dscalar] # outputs a single scalar value
@@ -34,6 +65,19 @@ class TheanWrapper(tt.Op):
         ret_like = self.likelihood(theta)
         outputs[0][0] = np.array(ret_like) # output
 
+# - Global varible definitions
+t0 = time()
+
+now = datetime.datetime.now()
+
+log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
+
+run = PP.PyRunPropagation()
+InitVals = []
+
+S = Storage_Container()
+# -
+
 def loglike_chi2(theta):
     theta = list(theta)
     global run
@@ -43,26 +87,26 @@ def loglike_chi2(theta):
     global S
     chi2 = 0
 
-    InBoundary = 1
+    InBoundary = True
     for par,val in zip(theta,InitVals):
         if (val[1] > par or par > val[2]):
-            chi2 = 2.0e40
-            InBoundary = 0
+            chi2 = 2.0e20
+            InBoundary = False
 
     stock = S.Check(theta)
     if (stock):
-        InBoundary = str(InBoundary) + "X"
+        Flag = str(int(InBoundary)) + "X"
         chi2 = stock
     elif InBoundary:
-        InBoundary = str(InBoundary) + " "
+        Flag = str(int(InBoundary)) + " "
         chi2 = run.PyChi2(theta)
         S.Add(theta,chi2)
 
     result = (-0.5*chi2)
 
     f = open(log_file_name,'a+')
-    f.write("{:10}  {:15}  {:6}  ".format(round(time()-t0,3), round(chi2,3),  InBoundary))
-    f.write('[ ' + ' '.join(["{:12}".format(round(p,6)) for p in theta]) + '  ] \n')
+    f.write("{:10}  {:15}  {:6}  ".format(round(time()-t0,3), round(chi2,3),  Flag))
+    f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
 
     if (result < -900000.0 and InBoundary):
         f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
@@ -85,22 +129,16 @@ def main():
 
     global InitVals
     InitVals = run.PyGetInitVals()
-    VarNames = run.PyGetFreeParNames().split(",")
-    FixedIndices = run.PyIndicesPars(1) # 1 : FIXED
-    FixedPars = []
+    VarNames = run.PyGetFreeParNames()
+    FixedVarNames = run.PyGetFixedParNames()
     for i in range(len(VarNames)):
         if bool(InitVals[i][4]):  #This position is the bool output of IsLogSampling
             VarNames[i] = "LOG10_" + VarNames[i]
-        if i in FixedIndices:
-            FixedPars.append(VarNames[i])
 
     # SORTING OUT FIXED VARIABLES
     print ('\n >> Not regarding the following FIXED parameters:')
-    for name, vals in zip(VarNames, InitVals):
-        if (name in FixedPars):
-            VarNames.remove(name)
-            InitVals.remove(vals)
-            print('{:25}{:10}{:10}'.format(name, vals[0], vals[3]))
+    for name in FixedVarNames:
+        print('{:25}'.format(name))
 
 
     # SETTING PYMC3 PARAMETERS
@@ -113,9 +151,9 @@ def main():
 
         # Priors for unknown model parameters
         Priors = []
-        print ('\n >> Found {} free parameters, using the following priors:'.format(len(VarNames)))
+        print ('\n >> Found {} free parameters, using the following values:'.format(len(VarNames)))
         for name, vals in zip(VarNames, InitVals):
-            print('{:25}{:10}{:10}'.format(name, vals[0], vals[3]*ProScale))
+            print('{:25}  [{:10}, {:15} +- {:10} ,{:10}]'.format(name, vals[1], vals[0], vals[3], vals[2]))
             P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.5)
             Priors.append(P)
 
@@ -171,49 +209,9 @@ def main():
     post_data = np.array([trace[VarNames[i]] for i in range(len(VarNames))]).T
     np.savetxt(output_filename, post_data, delimiter=',', header = '# '+ str(VarNames))
 
-class Storage_Container():
-    '''
-    Storage in order to prevent from unnessesary Chi2 calculations
-    by re-using allready calculated values.
-    Most recenly used parameters are beeing kept while not regarded are beeing eliminated
-    when new ones are saved
-    '''
-    A_Chi2 = []
-    A_theta = []
-    n_ = -1
 
-    def __init__(self, n_ =5):
-        self.A_Chi2 = [0 for i in range(n_)]
-        self.A_theta = [[] for i in range(n_)]
 
-    def Add(self, theta, Chi2, i = 0):
-        self.A_Chi2.pop(i)
-        self.A_theta.pop(i)
-        self.A_Chi2.append(Chi2)
-        self.A_theta.append(theta)
 
-    def Check(self,theta):
-        chi2 = 0
-        try:
-            i = self.A_theta.index(theta)
-            chi2 = self.A_Chi2[i]
-            self.Add(theta, chi2, i)
-        except ValueError:
-            chi2 = False
-        return chi2
-
-# - Global varible definitions
-t0 = time()
-
-now = datetime.datetime.now()
-
-log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
-
-run = PP.PyRunPropagation()
-InitVals = []
-
-S = Storage_Container()
-# -
 
 
 if __name__ == "__main__":

@@ -298,7 +298,7 @@ UsineFit  @ FreePars @ Transport        @ M=1 @ deltalow:FIT,LIN,[0.005,5.0],+9.
 
 UsineFit  @ Outputs  @ IsPrintCovMatrix     @ M=0 @ true
 
-# UsineFit @ FreePars @ SrcSteadyState   @ M=1 @ alpha:FIXED,LIN,[1.5.,4.0],2.317790e+00, 0.1
+UsineFit @ FreePars @ SrcSteadyState   @ M=1 @ alpha:FIXED,LIN,[1.5.,4.0],2.317790e+00, 0.1
 
 # NUISANCE PARAMETERS
 # #################
@@ -354,9 +354,9 @@ UsineFit  @ Outputs  @ IsPrintCovMatrix     @ M=0 @ true
 # UsineFit  @ FreePars    @ XSection          @ M=1 @ Norm_16O+H->11B:NUISANCE,LIN,[0.5,2.],0.96, 0.18
 # UsineFit  @ FreePars    @ XSection          @ M=1 @ EThresh_16O+H->11B:FIXED,LIN,[0.5,2.],5.,0.0
 # UsineFit  @ FreePars    @ XSection          @ M=1 @ SlopeLE_16O+H->11B:NUISANCE,LIN,[-1,1.],0.,0.15
-# UsineFit  @ FreePars    @ XSection          @ M=1 @ Norm_12C+H->11B:NUISANCE,LIN,[0.5,2.],1.1, 0.12
-# UsineFit  @ FreePars    @ XSection          @ M=1 @ EThresh_12C+H->11B:FIXED,LIN,[0.5,2.],8.,0.0
-# UsineFit  @ FreePars    @ XSection          @ M=1 @ SlopeLE_12C+H->11B:NUISANCE,LIN,[-1,1.],0.03, 0.15
-# UsineFit  @ FreePars    @ XSection          @ M=1 @ Norm_12C+H->10B:NUISANCE,LIN,[0.5,2.],1.027, 0.15
-# UsineFit  @ FreePars    @ XSection          @ M=1 @ EThresh_12C+H->10B:FIXED,LIN,[0.5,2.],5.,0.0
-# UsineFit  @ FreePars    @ XSection          @ M=1 @ SlopeLE_12C+H->10B:NUISANCE,LIN,[-1,1.],0.00, 0.15
+ UsineFit  @ FreePars    @ XSection          @ M=1 @ Norm_12C+H->11B:NUISANCE,LIN,[0.5,2.],1.1, 0.12
+ UsineFit  @ FreePars    @ XSection          @ M=1 @ EThresh_12C+H->11B:FIXED,LIN,[0.5,2.],8.,0.0
+ UsineFit  @ FreePars    @ XSection          @ M=1 @ SlopeLE_12C+H->11B:NUISANCE,LIN,[-1,1.],0.03, 0.15
+ UsineFit  @ FreePars    @ XSection          @ M=1 @ Norm_12C+H->10B:NUISANCE,LIN,[0.5,2.],1.027, 0.15
+ UsineFit  @ FreePars    @ XSection          @ M=1 @ EThresh_12C+H->10B:FIXED,LIN,[0.5,2.],5.,0.0
+ UsineFit  @ FreePars    @ XSection          @ M=1 @ SlopeLE_12C+H->10B:NUISANCE,LIN,[-1,1.],0.00, 0.15
