@@ -193,8 +193,17 @@ def main():
     S = Storage_Container(5*N_chains)
 
     with basic_model:
-        step = pm.Metropolis(S = np.diag([(ProScale*var[3])**2 for var in InitVals]))
+
+        try:
+            cov = np.loadtxt(sys.argv[7] , delimiter = ',' )
+            print(cov.shape)
+            print("\n >> Covariance matrix {} found".format(sys.argv[7]))
+            step = pm.Metropolis(S = cov)
+        except:
+            print("\n >> Not using Cov Matrix")
+            step = pm.Metropolis(S = np.diag([(ProScale*var[3])**2 for var in InitVals]))
         global t0
+        print("\n >> Starting sampler")
         t0 = time()
         trace = pm.sample(N_run,
                         step = step,
@@ -209,13 +218,33 @@ def main():
     print ('saving results as numpy array in {}'.format(output_filename))
 
     post_data = np.array([trace[VarNames[i]] for i in range(len(VarNames))]).T
-    np.savetxt(output_filename, post_data, delimiter=',', header = '# '+ str(VarNames))
+    np.savetxt(output_filename, post_data, delimiter=',', header = str(VarNames))
 
+def Gen_Cov():
+    print("\n >> Generating covariance matrix from data")
+    result_file = sys.argv[2]
+    print(" >> Loading results from {}".format(result_file))
 
+    if len(sys.argv) > 5:
+        cov_file = sys.argv[4]
+    else:
+        cov_file = "Cov_" + result_file.split(":")[0].split("_")[1] +  '_' + sys.argv[1].split(".par")[0]
 
+    post_data = np.loadtxt(result_file, delimiter = ',')
+    covariance = np.cov(post_data.T)
+
+    with open(result_file,'r') as r_file:
+        VarNames = r_file.readline()[2:]
+
+    print(" >> Sving covariance matrix in {}".format(cov_file))
+    np.savetxt(cov_file, covariance, delimiter = ', ', header = VarNames)
 
 
 
 if __name__ == "__main__":
     # execute only if run as a script
-    main()
+    try:
+        int(sys.argv[2])
+        main()
+    except:
+        Gen_Cov()
