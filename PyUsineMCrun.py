@@ -93,12 +93,14 @@ def loglike_chi2(theta):
             chi2 = 2.0e20
             InBoundary = False
 
+    Flag = str(int(InBoundary))
+
     stock = S.Check(theta)
     if (stock):
-        Flag = str(int(InBoundary)) + "X"
+        Flag += "X"
         chi2 = stock
     elif InBoundary:
-        Flag = str(int(InBoundary)) + " "
+        Flag += " "
         chi2 = run.PyChi2(theta)
         S.Add(theta,chi2)
 
