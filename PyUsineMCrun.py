@@ -214,11 +214,13 @@ def main():
 
     f.close()
 
-    output_filename = 'result_{}:{}:{}_'.format(N_run*N_chains,N_tune,N_chains) + datetime.datetime.now().strftime("%d.%m.%Y_%H:%M")
-    print ('saving results as numpy array in {}'.format(output_filename))
+    time_stamp = datetime.datetime.now().strftime("%d.%m.%Y_%H:%M")
+    for i_c in range(N_chains):
+        output_filename = 'result_C{}_{}_{}_'.format(i_c, N_run,N_tune) + time_stamp
+        print ('saving chain {} as numpy array in {}'.format(i_c, output_filename))
 
-    post_data = np.array([trace[VarNames[i]] for i in range(len(VarNames))]).T
-    np.savetxt(output_filename, post_data, delimiter=',', header = str(VarNames))
+        post_data = np.array([trace.get_values(VarNames[j_v], chains = i_c) for j_v in range(len(VarNames))]).T
+        np.savetxt(output_filename, post_data, delimiter=',', header = str(VarNames))
 
 def Gen_Cov():
     print("\n >> Generating covariance matrix from data")
