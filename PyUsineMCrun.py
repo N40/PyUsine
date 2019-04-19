@@ -64,6 +64,57 @@ class TheanWrapper(tt.Op):
         # call the log-likelihood function
         ret_like = self.likelihood(theta, 1)
         outputs[0][0] = np.array(ret_like) # output
+        
+class TheanWrapperGrad(tt.Op):
+    itypes = [tt.dvector] # expects a vector of parameter values when called
+    otypes = [tt.dscalar] # outputs a single scalar value
+    
+    def __init__(self, likefct):
+        """
+        loglike:
+            The log-likelihood (or whatever) function we've defined
+        """
+        # add inputs as class attributes
+        self.likelihood = likefct
+        
+        # initialise the gradient Op (below)
+        self.logpgrad = LogLikeGrad(self.likelihood)
+
+    def perform(self, node, inputs, outputs):
+        # the method that is used when calling the Op
+        theta, = inputs  # this will contain my variables
+        # call the log-likelihood function
+        ret_like = self.likelihood(theta, 1)
+        #print(ret_like)
+        outputs[0][0] = np.array(ret_like) # output
+        
+    def grad(self, inputs, g ):
+        # the method that is automaticaly searched for when using NUTS or HMC
+        theta, = inputs
+        return [g[0]*self.logpgrad(theta)]
+    
+class LogLikeGrad(tt.Op):
+    """
+    This Op will be called with a vector of values and also return a vector of
+    values - the gradients in each dimension.
+    """
+    itypes = [tt.dvector]
+    otypes = [tt.dvector]
+
+    def __init__(self, loglike):
+        """
+        loglike:
+            The log-likelihood (or whatever) function we've defined
+        """
+        # add inputs as class attributes
+        self.likelihood = loglike
+
+    def perform(self, node, inputs, outputs):
+        global STDs
+        theta, = inputs
+        # calculate gradients
+        grads = scipy.optimize.approx_fprime(theta, self.likelihood, STDs*0.05, 0) # arguments other than theta on last position 
+        outputs[0][0] = grads
 
 # - Global varible definitions
 t0 = time()
