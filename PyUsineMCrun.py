@@ -62,7 +62,7 @@ class TheanWrapper(tt.Op):
         # the method that is used when calling the Op
         theta, = inputs  # this will contain my variables
         # call the log-likelihood function
-        ret_like = self.likelihood(theta)
+        ret_like = self.likelihood(theta, 1)
         outputs[0][0] = np.array(ret_like) # output
 
 # - Global varible definitions
@@ -78,7 +78,7 @@ InitVals = []
 S = Storage_Container()
 # -
 
-def loglike_chi2(theta):
+def loglike_chi2(theta, IsVerb):
     theta = list(theta)
     global run
     global InitVals
@@ -105,17 +105,17 @@ def loglike_chi2(theta):
         S.Add(theta,chi2)
 
     result = (-0.5*chi2)
+    if bool(IsVerb)
+        f = open(log_file_name,'a+')
+        f.write("{:10}  {:15}  {:6}  ".format(round(time()-t0,3), round(chi2,3),  Flag))
+        f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
 
-    f = open(log_file_name,'a+')
-    f.write("{:10}  {:15}  {:6}  ".format(round(time()-t0,3), round(chi2,3),  Flag))
-    f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
+        if (result < -900000.0 and InBoundary):
+            f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
+            global ParFile
+            run.PySetClass(ParFile, 0, "OUT")
 
-    if (result < -900000.0 and InBoundary):
-        f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
-        global ParFile
-        run.PySetClass(ParFile, 0, "OUT")
-
-    f.close()
+        f.close()
 
     return result
 
@@ -190,7 +190,7 @@ def main():
     print ('\n >> using configuration N_run = {}, N_tune = {}, N_chains = {}, N_cores = {}\n'.format(N_run,N_tune,N_chains,N_cores))
 
     global S
-    S = Storage_Container(5*N_chains)
+    S = Storage_Container(2*N_chains*len(VarNames))
 
     with basic_model:
 
