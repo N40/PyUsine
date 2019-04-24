@@ -144,7 +144,9 @@ def loglike_chi2(theta, IsVerb):
             chi2 = 2.0e20
             InBoundary = False
 
-    Flag = str(int(InBoundary))
+    Flag = str(int(IsVerb))
+    if InBoundary == False:
+        Flag = "*"+Flag
 
     stock = S.Check(theta)
     if (stock):
@@ -156,7 +158,7 @@ def loglike_chi2(theta, IsVerb):
         S.Add(theta,chi2)
 
     result = (-0.5*chi2)
-    if bool(IsVerb)
+    if (bool(IsVerb)):
         f = open(log_file_name,'a+')
         f.write("{:10}  {:15}  {:6}  ".format(round(time()-t0,3), round(chi2,3),  Flag))
         f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
