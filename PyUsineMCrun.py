@@ -117,72 +117,75 @@ class LogLikeGrad(tt.Op):
         outputs[0][0] = grads
 
 # - Global varible definitions
-t0 = time()
 
-now = datetime.datetime.now()
-
-log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
-
-run = PP.PyRunPropagation()
-InitVals = []
-
-S = Storage_Container()
 # -
 
-def loglike_chi2(theta, IsVerb):
-    theta = list(theta)
-    global run
-    global InitVals
-    global t0
-    global log_file_name
-    global S
-    chi2 = 0
+class Chi2Eval():
+    def __init__(self, run, InitVals, t0, log_file_name, S):
+        self.run = run
+        self.InitVals = InitVals
+        self.t0 = t0
+        self.log_file_name = log_file_name
+        self.S = S
+        
+    def five(self, theta, IsVerb = 1):
+        print(theta, IsVerb)
+        return 5
+    
+    def HalfNegChi2(self, theta, IsVerb = 1):
+        theta = list(theta)
+        chi2 = 0
+        InBoundary = True
+        Flag = str(int(IsVerb))
+        
+        for par,val in zip(theta, self.InitVals):
+            if (val[1] > par or par > val[2]):
+                chi2 = 2.0e20
+                InBoundary = False
 
-    InBoundary = True
-    for par,val in zip(theta,InitVals):
-        if (val[1] > par or par > val[2]):
-            chi2 = 2.0e20
-            InBoundary = False
+        if InBoundary == False:
+            Flag = "*"+Flag
+                
+        stock = self.S.Check(theta)
+        if (stock):
+            Flag += "X"
+            chi2 = stock
+        elif InBoundary:
+            Flag += " "
+            chi2 = self.run.PyChi2(theta)
+            self.S.Add(theta,chi2)
 
-    Flag = str(int(IsVerb))
-    if InBoundary == False:
-        Flag = "*"+Flag
+        result = (-0.5*chi2)
+        if (bool(IsVerb)):
+            f = open(self.log_file_name,'a+')
+            f.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
+            f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
+            f.close()
 
-    stock = S.Check(theta)
-    if (stock):
-        Flag += "X"
-        chi2 = stock
-    elif InBoundary:
-        Flag += " "
-        chi2 = run.PyChi2(theta)
-        S.Add(theta,chi2)
+        """
+            if (result < -900000.0 and InBoundary):
+                f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
+                global ParFile
+                run.PySetClass(ParFile, 0, "OUT")
+        """
 
-    result = (-0.5*chi2)
-    if (bool(IsVerb)):
-        f = open(log_file_name,'a+')
-        f.write("{:10}  {:15}  {:6}  ".format(round(time()-t0,3), round(chi2,3),  Flag))
-        f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
-
-        if (result < -900000.0 and InBoundary):
-            f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
-            global ParFile
-            run.PySetClass(ParFile, 0, "OUT")
-
-        f.close()
-
-    return result
+        return result
 
 def main():
+    # GENERAL INITIALIZATION
+    now = datetime.datetime.now()
+    t0 = time()
+    log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
+    S = Storage_Container()
+    
     # LOADING USINE CONFIGURATION
-    global ParFile
     ParFile = sys.argv[1]
     print ('\n >> Loading configuration from {}'.format(ParFile))
 
-    global run
+    run = PP.PyRunPropagation()
     run.PySetLogFile("run.log")
     run.PySetClass(ParFile, 1, "OUT")
 
-    global InitVals
     InitVals = run.PyGetInitVals()
     VarNames = run.PyGetFreeParNames()
     FixedVarNames = run.PyGetFixedParNames()
@@ -198,8 +201,9 @@ def main():
 
     # SETTING PYMC3 PARAMETERS
     basic_model = pm.Model()
-
-    ext_fct = TheanWrapper(loglike_chi2)
+    
+    CE = Chi2Eval(run, InitVals, t0, log_file_name, S)
+    ext_fct = TheanWrapper(CE.HalfNegChi2)
 
     with basic_model:
         ProScale = 1. # Scale for the sampling normal
@@ -218,7 +222,6 @@ def main():
         likelihood = pm.DensityDist('likelihood',  lambda v: ext_fct(v), observed={'v': theta})
 
     # RUNNING PYMC3
-    global log_file_name
     print('\n >> Saving calculation steps in {}'.format(log_file_name) )
     f = open(log_file_name,'w+')
 
@@ -242,8 +245,7 @@ def main():
 
     print ('\n >> using configuration N_run = {}, N_tune = {}, N_chains = {}, N_cores = {}\n'.format(N_run,N_tune,N_chains,N_cores))
 
-    global S
-    S = Storage_Container(2*N_chains*len(VarNames))
+    CE.S = Storage_Container(2*N_chains*len(VarNames))
 
     with basic_model:
 
@@ -252,12 +254,12 @@ def main():
             print(cov.shape)
             print("\n >> Covariance matrix {} found".format(sys.argv[7]))
             step = pm.Metropolis(S = cov)
+            print("\n >> Using Cov Matrix  {} ".format(sys.argv[7]))
         except:
             print("\n >> Not using Cov Matrix")
             step = pm.Metropolis(S = np.diag([(ProScale*var[3])**2 for var in InitVals]))
-        global t0
         print("\n >> Starting sampler")
-        t0 = time()
+        CE.t0 = time()
         trace = pm.sample(N_run,
                         step = step,
                         progressbar = IsProgressbar,
