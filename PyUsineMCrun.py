@@ -6,6 +6,7 @@ import theano
 import theano.tensor as tt
 
 import numpy as np
+import scipy.optimize
 
 import PyProp as PP
 
@@ -69,7 +70,7 @@ class TheanWrapperGrad(tt.Op):
     itypes = [tt.dvector] # expects a vector of parameter values when called
     otypes = [tt.dscalar] # outputs a single scalar value
     
-    def __init__(self, likefct):
+    def __init__(self, likefct, STDs = None):
         """
         loglike:
             The log-likelihood (or whatever) function we've defined
@@ -78,7 +79,7 @@ class TheanWrapperGrad(tt.Op):
         self.likelihood = likefct
         
         # initialise the gradient Op (below)
-        self.logpgrad = LogLikeGrad(self.likelihood)
+        self.logpgrad = LogLikeGrad(self.likelihood, STDs)
 
     def perform(self, node, inputs, outputs):
         # the method that is used when calling the Op
@@ -101,19 +102,24 @@ class LogLikeGrad(tt.Op):
     itypes = [tt.dvector]
     otypes = [tt.dvector]
 
-    def __init__(self, loglike):
+    def __init__(self, loglike, STDs = None):
         """
         loglike:
             The log-likelihood (or whatever) function we've defined
         """
         # add inputs as class attributes
         self.likelihood = loglike
+        self.STDs = STDs
+        self.GradVerbose = 0
+        
 
     def perform(self, node, inputs, outputs):
-        global STDs
         theta, = inputs
+        if not np.array(self.STDs).any():
+            print('\n >> no deviations found, setting to 10\% ')
+            self.STDs = 0.1*np.abs(theta)
         # calculate gradients
-        grads = scipy.optimize.approx_fprime(theta, self.likelihood, STDs*0.05, 0) # arguments other than theta on last position 
+        grads = scipy.optimize.approx_fprime(theta, self.likelihood, self.STDs*0.05, self.GradVerbose) # arguments other than theta on last position 
         outputs[0][0] = grads
 
 # - Global varible definitions
