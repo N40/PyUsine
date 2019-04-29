@@ -65,11 +65,11 @@ class TheanWrapper(tt.Op):
         # call the log-likelihood function
         ret_like = self.likelihood(theta, 1)
         outputs[0][0] = np.array(ret_like) # output
-        
+
 class TheanWrapperGrad(tt.Op):
     itypes = [tt.dvector] # expects a vector of parameter values when called
     otypes = [tt.dscalar] # outputs a single scalar value
-    
+
     def __init__(self, likefct, STDs = None):
         """
         loglike:
@@ -77,7 +77,7 @@ class TheanWrapperGrad(tt.Op):
         """
         # add inputs as class attributes
         self.likelihood = likefct
-        
+
         # initialise the gradient Op (below)
         self.logpgrad = LogLikeGrad(self.likelihood, STDs)
 
@@ -88,12 +88,12 @@ class TheanWrapperGrad(tt.Op):
         ret_like = self.likelihood(theta, 1)
         #print(ret_like)
         outputs[0][0] = np.array(ret_like) # output
-        
+
     def grad(self, inputs, g ):
         # the method that is automaticaly searched for when using NUTS or HMC
         theta, = inputs
         return [g[0]*self.logpgrad(theta)]
-    
+
 class LogLikeGrad(tt.Op):
     """
     This Op will be called with a vector of values and also return a vector of
@@ -111,7 +111,7 @@ class LogLikeGrad(tt.Op):
         self.likelihood = loglike
         self.STDs = STDs
         self.GradVerbose = 0
-        
+
 
     def perform(self, node, inputs, outputs):
         theta, = inputs
@@ -119,12 +119,8 @@ class LogLikeGrad(tt.Op):
             print('\n >> no deviations found, setting to 10\% ')
             self.STDs = 0.1*np.abs(theta)
         # calculate gradients
-        grads = scipy.optimize.approx_fprime(theta, self.likelihood, self.STDs*0.05, self.GradVerbose) # arguments other than theta on last position 
+        grads = scipy.optimize.approx_fprime(theta, self.likelihood, self.STDs*0.05, self.GradVerbose) # arguments other than theta on last position
         outputs[0][0] = grads
-
-# - Global varible definitions
-
-# -
 
 class Chi2Eval():
     def __init__(self, run, InitVals, t0, log_file_name, S):
@@ -133,17 +129,13 @@ class Chi2Eval():
         self.t0 = t0
         self.log_file_name = log_file_name
         self.S = S
-        
-    def five(self, theta, IsVerb = 1):
-        print(theta, IsVerb)
-        return 5
-    
+
     def HalfNegChi2(self, theta, IsVerb = 1):
         theta = list(theta)
         chi2 = 0
         InBoundary = True
         Flag = str(int(IsVerb))
-        
+
         for par,val in zip(theta, self.InitVals):
             if (val[1] > par or par > val[2]):
                 chi2 = 2.0e20
@@ -151,7 +143,7 @@ class Chi2Eval():
 
         if InBoundary == False:
             Flag = "*"+Flag
-                
+
         stock = self.S.Check(theta)
         if (stock):
             Flag += "X"
@@ -168,14 +160,46 @@ class Chi2Eval():
             f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
             f.close()
 
-        """
-            if (result < -900000.0 and InBoundary):
-                f.write('# - - Warning: Class ist beeing reinitialized due probable crash - -\n')
-                global ParFile
-                run.PySetClass(ParFile, 0, "OUT")
-        """
-
         return result
+
+class MCU(object):
+    """docstring for MCU"""
+    def __init__(self, **arg):
+        self.run = PP.PyRunPropagation()
+
+
+    def InitPar(self, ParFile):
+        """
+        Loading Usine Configuration and setting all intern parameters
+        correspondingly
+        """
+        # GENERAL INITIALIZATION
+        now = datetime.datetime.now()
+        log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
+
+        self.ParFile = ParFile
+        print ('\n >> Loading configuration from {}'.format(ParFile))
+
+        self.run.PySetLogFile("run.log")
+        self.run.PySetClass(self.ParFile, 1, "OUT")
+
+        self.InitVals = run.PyGetInitVals()
+        self.VarNames = run.PyGetFreeParNames()
+        self.FixedVarNames = run.PyGetFixedParNames()
+        for i in range(len(self.VarNames)):
+            if bool(self.InitVals[i][4]):  #This position is the bool output of IsLogSampling
+                self.VarNames[i] = "LOG10_" + self.VarNames[i]
+
+        # SORTING OUT FIXED VARIABLES
+        print ('\n >> Not regarding the following FIXED parameters:')
+        for name in self.FixedVarNames:
+            print('{:25}'.format(name))
+
+        # Initializing Chi2 calling class
+        # Probable to be abolished
+        S = Storage_Container(5*len(VarNames))
+        self.CE = Chi2Eval(run, InitVals, t0, log_file_name, S)
+
 
 def main():
     # GENERAL INITIALIZATION
@@ -183,7 +207,7 @@ def main():
     t0 = time()
     log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
     S = Storage_Container()
-    
+
     # LOADING USINE CONFIGURATION
     ParFile = sys.argv[1]
     print ('\n >> Loading configuration from {}'.format(ParFile))
@@ -207,7 +231,7 @@ def main():
 
     # SETTING PYMC3 PARAMETERS
     basic_model = pm.Model()
-    
+
     CE = Chi2Eval(run, InitVals, t0, log_file_name, S)
     ext_fct = TheanWrapper(CE.HalfNegChi2)
 
@@ -265,7 +289,7 @@ def main():
             print("\n >> Not using Cov Matrix")
             S_ = np.diag([(ProScale*var[3])**2 for var in InitVals])
         step = pm.Metropolis(S = S_, proposal_dist = pm.MultivariateNormalProposal )
-        
+
         print("\n >> Starting sampler")
         CE.t0 = time()
         trace = pm.sample(N_run,
