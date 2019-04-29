@@ -259,11 +259,13 @@ def main():
             cov = np.loadtxt(sys.argv[7] , delimiter = ',' )
             print(cov.shape)
             print("\n >> Covariance matrix {} found".format(sys.argv[7]))
-            step = pm.Metropolis(S = cov)
+            S_ = cov
             print("\n >> Using Cov Matrix  {} ".format(sys.argv[7]))
         except:
             print("\n >> Not using Cov Matrix")
-            step = pm.Metropolis(S = np.diag([(ProScale*var[3])**2 for var in InitVals]))
+            S_ = np.diag([(ProScale*var[3])**2 for var in InitVals])
+        step = pm.DEMetropolis(S = S_, proposal_dist = pm.MultivariateNormalProposal )
+        
         print("\n >> Starting sampler")
         CE.t0 = time()
         trace = pm.sample(N_run,
@@ -271,7 +273,8 @@ def main():
                         progressbar = IsProgressbar,
                         chains = N_chains,
                         cores = N_cores,
-                        tune = N_tune  )
+                        tune = N_tune ,
+                        parallelize=True)
 
     f.close()
 
