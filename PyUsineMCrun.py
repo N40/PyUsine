@@ -264,7 +264,7 @@ def main():
         except:
             print("\n >> Not using Cov Matrix")
             S_ = np.diag([(ProScale*var[3])**2 for var in InitVals])
-        step = pm.DEMetropolis(S = S_, proposal_dist = pm.MultivariateNormalProposal )
+        step = pm.Metropolis(S = S_, proposal_dist = pm.MultivariateNormalProposal )
         
         print("\n >> Starting sampler")
         CE.t0 = time()
