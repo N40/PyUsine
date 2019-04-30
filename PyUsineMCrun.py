@@ -164,18 +164,22 @@ class Chi2Eval():
 
 class MCU(object):
     """docstring for MCU"""
-    def __init__(self, **arg):
+    def __init__(self, **kwargs):
         self.run = PP.PyRunPropagation()
 
 
-    def InitPar(self, ParFile):
+    def InitPar(self, ParFile, log_file_name = None):
         """
         Loading Usine Configuration and setting all intern parameters
         correspondingly
         """
         # GENERAL INITIALIZATION
         now = datetime.datetime.now()
-        log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
+        if log_file_name:
+            self.log_file_name = log_file_name
+        else:
+            self.log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
+        print ('\n >> Saving futher Calculations in {}'.format(self.log_file_name))
 
         self.ParFile = ParFile
         print ('\n >> Loading configuration from {}'.format(ParFile))
@@ -183,10 +187,12 @@ class MCU(object):
         self.run.PySetLogFile("run.log")
         self.run.PySetClass(self.ParFile, 1, "OUT")
 
-        self.InitVals = run.PyGetInitVals()
-        self.VarNames = run.PyGetFreeParNames()
-        self.FixedVarNames = run.PyGetFixedParNames()
+        self.InitVals = self.run.PyGetInitVals()
+        self.VarNames = self.run.PyGetFreeParNames()
+        self.FixedVarNames = self.run.PyGetFixedParNames()
+        self.Theta0 = []
         for i in range(len(self.VarNames)):
+            self.Theta0.append(self.InitVals[i][0])
             if bool(self.InitVals[i][4]):  #This position is the bool output of IsLogSampling
                 self.VarNames[i] = "LOG10_" + self.VarNames[i]
 
@@ -197,8 +203,8 @@ class MCU(object):
 
         # Initializing Chi2 calling class
         # Probable to be abolished
-        S = Storage_Container(5*len(VarNames))
-        self.CE = Chi2Eval(run, InitVals, t0, log_file_name, S)
+        S = Storage_Container(5*len(self.VarNames))
+        self.CE = Chi2Eval(self.run, self.InitVals, time(), self.log_file_name, S)
 
 
 def main():
