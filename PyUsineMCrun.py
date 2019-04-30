@@ -166,6 +166,8 @@ class MCU(object):
     """docstring for MCU"""
     def __init__(self, **kwargs):
         self.run = PP.PyRunPropagation()
+        self.Cov = None
+        self.basic_model = None
 
 
     def InitPar(self, ParFile, log_file_name = None):
@@ -211,10 +213,7 @@ class MCU(object):
             self.Cov = np.loadtxt(kwargs["Cov"] , delimiter = ',' )
             print("\n >> Valid Covariance matrix {} found".format(kwargs["Cov"]))
         except:
-            try:
-                Scale = kwargs["Scale"]
-            except:
-                Scale = 0.5
+            Scale = kwargs.get("Scale",0.5)
             print("\n >> No valid Covariance matric found",
                   "\n >> creating diagnonal one with scale {}".format(Scale))
             self.Cov = np.diag([(Scale*var[3])**2 for var in self.InitVals])
@@ -240,6 +239,76 @@ class MCU(object):
             # Likelihood (sampling distribution) of observations
             likelihood = pm.DensityDist('likelihood',  lambda v: ext_fct(v), observed={'v': theta})
 
+    def InitPyMCSampling(self, **kwargs):
+        '...'
+        #Checking if all the necessary stuff is loaded
+        if not self.VarNames:
+            self.InitPar(kwargs["ParFile"])
+        try: self.Cov[0][0]
+        except TypeError: self.SetCovMatrix()
+        if not self.basic_model:
+            self.InitPyMC()
+
+        # RUNNING PYMC3
+        print('\n >> Saving calculation steps in {}'.format(self.log_file_name) )
+        open(self.log_file_name,'w+').close()
+        with self.basic_model:
+            Sampler_Name = kwargs.get("Sampler_Name","Metropolis")
+            print ('\n >> using {} sampling method\n'.format(Sampler_Name))
+
+            #N_run  = kwargs.get("N_run" , 500)
+            N_tune = kwargs.get("N_tune" , 0)
+            N_chains = kwargs.get("N_chains" , 1)
+            N_cores = kwargs.get("N_cores" , min(4,N_chains))
+            IsProgressbar = kwargs.get("IsProgressbar" , 1)
+            print ('\n >> using configuration :  {:12}, N_tune = {}, N_chains = {}, N_cores = {}\n'.format(Sampler_Name,N_tune,N_chains,N_cores))
+
+            self.CE.S = Storage_Container(2*N_chains*len(self.VarNames))
+
+            if Sampler_Name == "DEMetropolis":
+                step = pm.DEMetropolis(S = self.Cov, proposal_dist = pm.MultivariateNormalProposal )
+            elif Sampler_Name == "Metropolis":
+                step = pm.Metropolis(S = self.Cov, proposal_dist = pm.MultivariateNormalProposal )
+            else:
+                print('\n >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
+                step = pm.Metropolis(S = self.Cov, proposal_dist = pm.MultivariateNormalProposal )
+
+            self.Custom_sample_args = {
+                "step"        : step,
+                "progressbar" : IsProgressbar,
+                "chains"      : N_chains,
+                "cores"       : N_cores,
+                "tune"        : N_tune ,
+                "parallelize" : True}
+
+            self.trace = None
+
+
+    def PyMCSample(self, N_run = 50):
+        try:
+            trace = self.trace
+            start =[trace.point(-1,i_C) for i_C in range(self.Custom_sample_args['chains'])]
+            print("\n >> Continouing previous trace")
+        except:
+            trace = None
+            start = {}
+
+        print("\n >> Starting sampler")
+        self.CE.t0 = time()
+        with self.basic_model:
+            trace = pm.sample(N_run,
+                trace = trace,
+                start = start,
+                blocked = True,
+                **self.Custom_sample_args,
+                )
+
+        post_data = np.array([
+            [trace.get_values(self.VarNames[j_V], chains = i_C) for j_V in range(len(self.VarNames))]
+                        for i_C in range(self.Custom_sample_args['chains'])]  )
+        print(post_data.shape)
+        self.trace = trace
+        return post_data
 
 
 
