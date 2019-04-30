@@ -206,6 +206,42 @@ class MCU(object):
         S = Storage_Container(5*len(self.VarNames))
         self.CE = Chi2Eval(self.run, self.InitVals, time(), self.log_file_name, S)
 
+    def SetCovMatrix(self, **kwargs):
+        try:
+            self.Cov = np.loadtxt(kwargs["Cov"] , delimiter = ',' )
+            print("\n >> Valid Covariance matrix {} found".format(kwargs["Cov"]))
+        except:
+            try:
+                Scale = kwargs["Scale"]
+            except:
+                Scale = 0.5
+            print("\n >> No valid Covariance matric found",
+                  "\n >> creating diagnonal one with scale {}".format(Scale))
+            self.Cov = np.diag([(Scale*var[3])**2 for var in self.InitVals])
+
+
+    def InitPyMC(self):
+        self.basic_model = pm.Model()
+        ext_fct = TheanWrapper(self.CE.HalfNegChi2)
+
+        with self.basic_model:
+            ProScale = 1. # Scale for the sampling normal
+
+            # Priors for unknown model parameters
+            Priors = []
+            print ('\n >> Using {} free parameters, using the following values:'.format(len(self.VarNames)))
+            for name, vals in zip(self.VarNames, self.InitVals):
+                print('{:25}  [{:10}, {:15} +- {:10} ,{:10}]'.format(name, vals[1], vals[0], vals[3], vals[2]))
+                P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.5)
+                Priors.append(P)
+
+            theta = tt.as_tensor_variable(Priors)
+
+            # Likelihood (sampling distribution) of observations
+            likelihood = pm.DensityDist('likelihood',  lambda v: ext_fct(v), observed={'v': theta})
+
+
+
 
 def main():
     # GENERAL INITIALIZATION
