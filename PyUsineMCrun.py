@@ -284,17 +284,17 @@ class MCU(object):
             self.trace = None
 
 
-    def PyMCSample(self, N_run = 50):
+    def Sample(self, N_run = 50):
         try:
             trace = self.trace
             start =[trace.point(-1,i_C) for i_C in range(self.Custom_sample_args['chains'])]
             print("\n >> Continouing previous trace")
         except:
+            self.CE.t0 = time()
             trace = None
             start = {}
 
         print("\n >> Starting sampler")
-        self.CE.t0 = time()
         with self.basic_model:
             trace = pm.sample(N_run,
                 trace = trace,
@@ -310,6 +310,61 @@ class MCU(object):
         self.trace = trace
         return post_data
 
+    def SaveResults(self, **kwargs):
+        time_stamp = datetime.datetime.now().strftime("%d.%m.%Y_%H:%M")
+        Result_Key = kwargs.get("Result_Key", time_stamp)
+        Result_Loc = kwargs.get("Result_Loc", '')
+        if len(Result_Loc) > 0:
+            Result_Loc = Result_Loc + '/'
+
+        Combined = kwargs.get("Combined", False)
+        if Combined == False:
+            for i_c in range(self.Custom_sample_args['chains']):
+                output_filename = Result_Loc+'result_C{}_{}'.format(i_c, Result_Key)
+                print (' >> saving chain {} as numpy array in {}'.format(i_c, output_filename))
+
+                post_data = np.array([self.trace.get_values(self.VarNames[j_v], chains = i_c) for j_v in range(len(self.VarNames))]).T
+                np.savetxt(output_filename, post_data, delimiter=',', header = str(self.VarNames))
+        else:
+            output_filename = Result_Loc+'result_{}'.format(Result_Key)
+            print (' >> saving as numpy array in {}'.format(output_filename))
+
+            post_data = np.array([self.trace.get_values(self.VarNames[j_v]) for j_v in range(len(self.VarNames))]).T
+            np.savetxt(output_filename, post_data, delimiter=',', header = str(self.VarNames))
+
+def RunMC():
+    now = datetime.datetime.now()
+    log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
+
+    ParFile = sys.argv[1]
+
+    MC = MCU()
+    MC.InitPar(ParFile, log_file_name)
+    MC.InitPyMC()
+
+    if len(sys.argv) >= 3:
+        N_run = int(sys.argv[2])
+    if len(sys.argv) >= 4:
+        N_tune = int(sys.argv[3])
+    if len(sys.argv) >= 5:
+        N_chains = int(sys.argv[4])
+    if len(sys.argv) >= 6:
+        IsProgressbar = int(sys.argv[5])
+    if len(sys.argv) >= 7:
+        N_cores = int(sys.argv[6])
+
+    MC.InitPyMCSampling(
+        N_tune = N_tune,
+        N_chains = N_chains,
+        N_cores = N_cores,
+        IsProgressbar = IsProgressbar,
+    )
+
+    for i in range(3):
+        data = MC.Sample(N_run)
+        print(data)
+
+    MC.SaveResults()
 
 
 def main():
@@ -446,6 +501,6 @@ if __name__ == "__main__":
     # execute only if run as a script
     try:
         int(sys.argv[2])
-        main()
+        RunMC()
     except:
         Gen_Cov()
