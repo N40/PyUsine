@@ -182,6 +182,7 @@ class MCU(object):
         else:
             self.log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
         print ('\n >> Saving futher Calculations in {}'.format(self.log_file_name))
+        open(log_file_name,'w+').close() # wiping the logfile
 
         self.ParFile = ParFile
         print ('\n >> Loading configuration from {}'.format(ParFile))
