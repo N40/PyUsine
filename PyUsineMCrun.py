@@ -360,11 +360,9 @@ def RunMC():
         IsProgressbar = IsProgressbar,
     )
 
-    for i in range(3):
+    for i_I in range(50):
         data = MC.Sample(N_run)
-        print(data)
-
-    MC.SaveResults()
+        MC.SaveResults(Result_Loc = "OUTPUT", Result_Key = "I{}_longterm".format(i_I))
 
 
 def main():
