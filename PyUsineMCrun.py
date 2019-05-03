@@ -366,7 +366,7 @@ def RunMC():
 
     for i_I in range(50):
         data = MC.Sample(N_run)
-        MC.SaveResults(Result_Loc = "OUTPUT", Result_Key = "I{}_longterm".format(i_I))
+        MC.SaveResults(Result_Loc = "OUTPUT_DE", Result_Key = "I{}_longterm".format(i_I))
 
 
 def main():
