@@ -1,12 +1,12 @@
+import numpy as np
+import scipy.optimize
+
 import pymc3 as pm
 from pymc3 import  *
 print('Running on PyMC3 v{}'.format(pm.__version__))
 
 import theano
 import theano.tensor as tt
-
-import numpy as np
-import scipy.optimize
 
 import PyProp as PP
 
@@ -182,10 +182,10 @@ class MCU(object):
         else:
             self.log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
         print ('\n >> Saving futher Calculations in {}'.format(self.log_file_name))
-        open(log_file_name,'w+').close() # wiping the logfile
+        open(self.log_file_name,'w+').close() # wiping the logfile
 
         self.ParFile = ParFile
-        print ('\n >> Loading configuration from {}'.format(ParFile))
+        print ('\n >> Loading configuration from {}'.format(self.ParFile))
 
         self.run.PySetLogFile("run.log")
         self.run.PySetClass(self.ParFile, 1, "OUT")
@@ -194,8 +194,10 @@ class MCU(object):
         self.VarNames = self.run.PyGetFreeParNames()
         self.FixedVarNames = self.run.PyGetFixedParNames()
         self.Theta0 = []
+        self.STDs = []
         for i in range(len(self.VarNames)):
             self.Theta0.append(self.InitVals[i][0])
+            self.STDs.append(self.InitVals[i][3])
             if bool(self.InitVals[i][4]):  #This position is the bool output of IsLogSampling
                 self.VarNames[i] = "LOG10_" + self.VarNames[i]
 
@@ -359,6 +361,7 @@ def RunMC():
         N_chains = N_chains,
         N_cores = N_cores,
         IsProgressbar = IsProgressbar,
+        Sampler_Name == "DEMetropolis",
     )
 
     for i_I in range(50):
