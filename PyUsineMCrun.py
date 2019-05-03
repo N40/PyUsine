@@ -344,6 +344,8 @@ def RunMC():
     MC = MCU()
     MC.InitPar(ParFile, log_file_name)
     MC.InitPyMC()
+    
+    Result_Loc = "OUTPUT_"
 
     if len(sys.argv) >= 3:
         N_run = int(sys.argv[2])
@@ -355,6 +357,8 @@ def RunMC():
         IsProgressbar = int(sys.argv[5])
     if len(sys.argv) >= 7:
         N_cores = int(sys.argv[6])
+    if len(sys.argv) >= 8:
+        Result_Loc = sys.argv[7]
 
     MC.InitPyMCSampling(
         N_tune = N_tune,
@@ -366,7 +370,7 @@ def RunMC():
 
     for i_I in range(50):
         data = MC.Sample(N_run)
-        MC.SaveResults(Result_Loc = "OUTPUT_DE", Result_Key = "I{}_longterm".format(i_I))
+        MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}_longterm".format(i_I))
 
 
 def main():
