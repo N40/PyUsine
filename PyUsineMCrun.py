@@ -14,6 +14,8 @@ from time import time
 import sys
 import datetime
 
+import argparse
+
 
 # define a theano Op for our likelihood function
 class Storage_Container():
@@ -335,19 +337,29 @@ class MCU(object):
             post_data = np.array([self.trace.get_values(self.VarNames[j_v]) for j_v in range(len(self.VarNames))]).T
             np.savetxt(output_filename, post_data, delimiter=',', header = str(self.VarNames))
 
-def RunMC():
+def RunMC(args):
     now = datetime.datetime.now()
     log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
 
-    ParFile = sys.argv[1]
+    ParFile = args['P']
+    if ParFile == None:
+        print(" >> Not parameter file specified, aborting!\n")
+        return
 
     MC = MCU()
     MC.InitPar(ParFile, log_file_name)
     MC.InitPyMC()
 
-    Result_Loc = "OUTPUT_DE"
+    Result_Loc      = args['O']
+    N_run, N_tune, N_chains = args['C']
+    IsProgressbar   = args['V']
+    N_cores         = args['M']
+    Sampler_Name    = args['S']
+    N_I             = args['I']
 
-    if len(sys.argv) >= 3:
+
+
+    """    if len(sys.argv) >= 3:
         N_run = int(sys.argv[2])
     if len(sys.argv) >= 4:
         N_tune = int(sys.argv[3])
@@ -358,17 +370,18 @@ def RunMC():
     if len(sys.argv) >= 7:
         N_cores = int(sys.argv[6])
     if len(sys.argv) >= 8:
-        Result_Loc = sys.argv[7]
+        Result_Loc = sys.argv[7]"""
 
     MC.InitPyMCSampling(
         N_tune = N_tune,
         N_chains = N_chains,
         N_cores = N_cores,
         IsProgressbar = IsProgressbar,
-        Sampler_Name == "DEMetropolis",
+        Sampler_Name = Sampler_Name,
     )
 
-    for i_I in range(50):
+    for i_I in range(N_I):
+        print(' >> Starging interation {}'.format(i_I + 1))
         data = MC.Sample(N_run)
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}_longterm".format(i_I))
 
@@ -502,11 +515,18 @@ def Gen_Cov():
     np.savetxt(cov_file, covariance, delimiter = ', ', header = VarNames)
 
 
-
 if __name__ == "__main__":
     # execute only if run as a script
-    try:
-        int(sys.argv[2])
-        RunMC()
-    except:
-        Gen_Cov()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-C', type=int, nargs = 3, default=[50, 0, 1] , help='N_Run, N_Tune, N_Chains')
+    parser.add_argument('-M', type=bool, default=False , help='Multicore')
+    parser.add_argument('-I', type=int, default=1 , help='N_Iterations')
+    parser.add_argument('-P', type=str, help='Input arameter file')
+    parser.add_argument('-O', type=str, default='OUT', help='Output directory')
+    parser.add_argument('-R', type=str, default='', help='Result key')
+    parser.add_argument('-V', type=int, default=1, help='Verbose progressbar')
+    parser.add_argument('-S', type=str, default='DEMetropolis', help='Sampler Name')
+
+    args = vars(parser.parse_args())
+    print(args)
+    RunMC(args)
