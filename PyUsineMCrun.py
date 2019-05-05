@@ -344,8 +344,8 @@ def RunMC():
     MC = MCU()
     MC.InitPar(ParFile, log_file_name)
     MC.InitPyMC()
-    
-    Result_Loc = "OUTPUT_"
+
+    Result_Loc = "OUTPUT_DE"
 
     if len(sys.argv) >= 3:
         N_run = int(sys.argv[2])
