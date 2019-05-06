@@ -31,6 +31,7 @@ class Storage_Container():
     n_ = -1
 
     def __init__(self, n_ =5):
+        self.n_ = n_
         self.A_Chi2 = [0 for i in range(n_)]
         self.A_theta = [[] for i in range(n_)]
 
