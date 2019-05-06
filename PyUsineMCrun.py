@@ -15,6 +15,7 @@ import sys
 import datetime
 
 import argparse
+import os
 
 
 # define a theano Op for our likelihood function
@@ -172,7 +173,7 @@ class MCU(object):
         self.basic_model = None
 
 
-    def InitPar(self, ParFile, log_file_name = None):
+    def InitPar(self, ParFile, log_file_name = None, Theta0 = None):
         """
         Loading Usine Configuration and setting all intern parameters
         correspondingly
@@ -198,6 +199,9 @@ class MCU(object):
         self.Theta0 = []
         self.STDs = []
         for i in range(len(self.VarNames)):
+            if Theta0:
+                self.InitVals[i][0] = Theta0[i]
+
             self.Theta0.append(self.InitVals[i][0])
             self.STDs.append(self.InitVals[i][3])
             if bool(self.InitVals[i][4]):  #This position is the bool output of IsLogSampling
@@ -346,10 +350,6 @@ def RunMC(args):
         print(" >> Not parameter file specified, aborting!\n")
         return
 
-    MC = MCU()
-    MC.InitPar(ParFile, log_file_name)
-    MC.InitPyMC()
-
     Result_Loc      = args['O']
     N_run, N_tune, N_chains = args['C']
     IsProgressbar   = args['V']
@@ -357,6 +357,26 @@ def RunMC(args):
     Sampler_Name    = args['S']
     N_I             = args['I']
 
+    Key             = args['R']
+    if len(Key) > 0:
+        Key = '_'+Key
+
+    Theta0 = None
+    if args['T']:
+        file     = args['T'][0]
+        line_no  = int(args['T'][1])
+        Theta0 = open(file).readlines()[line_no][:-1]
+        Theta0 = list(eval(Theta0))
+        print (Theta0)
+
+    MC = MCU()
+    MC.InitPar(ParFile, log_file_name, Theta0)
+    MC.InitPyMC()
+
+    try:
+        os.mkdir(Result_Loc)
+    except:
+        pass
 
 
     """    if len(sys.argv) >= 3:
@@ -383,7 +403,7 @@ def RunMC(args):
     for i_I in range(N_I):
         print(' >> Starging interation {}'.format(i_I + 1))
         data = MC.Sample(N_run)
-        MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}_longterm".format(i_I))
+        MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
 
 
 def main():
@@ -526,6 +546,8 @@ if __name__ == "__main__":
     parser.add_argument('-R', type=str, default='', help='Result key')
     parser.add_argument('-V', type=int, default=1, help='Verbose progressbar')
     parser.add_argument('-S', type=str, default='DEMetropolis', help='Sampler Name')
+    parser.add_argument('-T', nargs = 2, help='Theta0: File, line number')
+
 
     args = vars(parser.parse_args())
     print(args)
