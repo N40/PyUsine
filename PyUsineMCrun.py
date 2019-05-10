@@ -17,8 +17,6 @@ import datetime
 import argparse
 import os
 
-
-# define a theano Op for our likelihood function
 class Storage_Container():
     '''
     Storage in order to prevent from unnessesary Chi2 calculations
@@ -50,6 +48,7 @@ class Storage_Container():
             chi2 = False
         return chi2
 
+# define a theano Op for our likelihood function
 class TheanWrapper(tt.Op):
     itypes = [tt.dvector] # expects a vector of parameter values when called
     otypes = [tt.dscalar] # outputs a single scalar value
@@ -70,6 +69,9 @@ class TheanWrapper(tt.Op):
         outputs[0][0] = np.array(ret_like) # output
 
 class TheanWrapperGrad(tt.Op):
+    """
+    A generic Class, necessary in order to call custom log-probability function
+    """
     itypes = [tt.dvector] # expects a vector of parameter values when called
     otypes = [tt.dscalar] # outputs a single scalar value
 
@@ -126,6 +128,10 @@ class LogLikeGrad(tt.Op):
         outputs[0][0] = grads
 
 class Chi2Eval():
+    """
+    Class in order to mediate the execution and documentation of the Chi2 function calls
+    Could be merged into the MCU class in future
+    """
     def __init__(self, run, InitVals, t0, log_file_name, S):
         self.run = run
         self.InitVals = InitVals
@@ -166,7 +172,9 @@ class Chi2Eval():
         return result
 
 class MCU(object):
-    """docstring for MCU"""
+    """
+    This class contains all the steps and routines for generating MCMC Fits
+    """
     def __init__(self, **kwargs):
         self.run = PP.PyRunPropagation()
         self.Cov = None
@@ -291,7 +299,6 @@ class MCU(object):
                 "parallelize" : True}
 
             self.trace = None
-
 
     def Sample(self, N_run = 50):
         try:
