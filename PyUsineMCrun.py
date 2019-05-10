@@ -299,6 +299,8 @@ class MCU(object):
                 "parallelize" : True}
 
             self.trace = None
+            self.Prev_End = None
+
 
     def Sample(self, N_run = 50):
         try:
@@ -306,9 +308,13 @@ class MCU(object):
             start =[trace.point(-1,i_C) for i_C in range(self.Custom_sample_args['chains'])]
             print("\n >> Continouing previous trace")
         except:
-            self.CE.t0 = time()
-            trace = None
-            start = {}
+            if self.Prev_End:
+                start = self.Prev_End
+                print("\n >> Continouing previous calculations")
+            else:
+                self.CE.t0 = time()
+                trace = None
+                start = {}
 
         print("\n >> Starting sampler")
         with self.basic_model:
@@ -330,8 +336,6 @@ class MCU(object):
         time_stamp = datetime.datetime.now().strftime("%d.%m.%Y_%H:%M")
         Result_Key = kwargs.get("Result_Key", time_stamp)
         Result_Loc = kwargs.get("Result_Loc", '')
-        if len(Result_Loc) > 0:
-            Result_Loc = Result_Loc + '/'
 
         Combined = kwargs.get("Combined", False)
         if Combined == False:
@@ -368,6 +372,9 @@ def RunMC(args):
     if len(Key) > 0:
         Key = '_'+Key
 
+    if Result_Loc != '':
+        Result_Loc += '/'
+
     Theta0 = None
     if args['T']:
         file     = args['T'][0]
@@ -385,19 +392,26 @@ def RunMC(args):
     except:
         pass
 
+    L_I = args['L']
+    if L_I > 0:
+        MC.Prev_End = []
 
-    """    if len(sys.argv) >= 3:
-        N_run = int(sys.argv[2])
-    if len(sys.argv) >= 4:
-        N_tune = int(sys.argv[3])
-    if len(sys.argv) >= 5:
-        N_chains = int(sys.argv[4])
-    if len(sys.argv) >= 6:
-        IsProgressbar = int(sys.argv[5])
-    if len(sys.argv) >= 7:
-        N_cores = int(sys.argv[6])
-    if len(sys.argv) >= 8:
-        Result_Loc = sys.argv[7]"""
+        for i_C in range(N_chains):
+            last_res_file = Result_Loc+'result_C{}_I{}{}'.format(i_C,L_I,Key)
+            try:
+                last_vals = np.loadtxt(last_res_file, delimiter = ",", unpack = False)[-1]
+                print(" >> loaded points from file {}".format(last_res_file))
+            except:
+                print(" >> aborting during loading of last results in {}\n".format(last_res_file))
+                return
+            _start = dict()
+            for name, val in zip(MC.VarNames,last_vals):
+                _start.update({name: val})
+            MC.Prev_End.append(_start)
+
+        if len(MC.Prev_End) != N_chains:
+            print(" >> number of chains {} not equal to loaded last results {}\n".format(N_chains,len(MC.Prev_End) ))
+            return
 
     MC.InitPyMCSampling(
         N_tune = N_tune,
@@ -407,7 +421,7 @@ def RunMC(args):
         Sampler_Name = Sampler_Name,
     )
 
-    for i_I in range(N_I):
+    for i_I in range(L_I+1, N_I + L_I+1):
         print(' >> Starging interation {}'.format(i_I + 1))
         data = MC.Sample(N_run)
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
@@ -554,6 +568,7 @@ if __name__ == "__main__":
     parser.add_argument('-V', type=int, default=1, help='Verbose progressbar')
     parser.add_argument('-S', type=str, default='DEMetropolis', help='Sampler Name')
     parser.add_argument('-T', nargs = 2, help='Theta0: File, line number')
+    parser.add_argument('-L', type=int, default = 0, help='Last iteration index to load files from')
 
 
     args = vars(parser.parse_args())
