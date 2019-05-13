@@ -225,13 +225,13 @@ class MCU(object):
         S = Storage_Container(5*len(self.VarNames))
         self.CE = Chi2Eval(self.run, self.InitVals, time(), self.log_file_name, S)
         
-    def Gen_Start_Points(sigma = 0.5):
+    def Gen_Start_Points(self, sigma = 0.33):
         start_points = []
         for i_C in range(self.Custom_sample_args['chains']):
             start = dict()
             for V,S,T,P in zip(self.VarNames,self.STDs ,self.Theta0, self.InitVals ):
                 new_V = T + np.random.normal()*S
-                while (new_V < P[1] or new_V > P[2])
+                while (new_V < P[1] or new_V > P[2]):
                     new_V = T + np.random.normal()*S
                 start.update({V:new_V})
             start_points.append(start)
