@@ -272,14 +272,14 @@ class MCU(object):
         open(self.log_file_name,'w+').close()
         with self.basic_model:
             Sampler_Name = kwargs.get("Sampler_Name","Metropolis")
-            print ('\n >> using {} sampling method\n'.format(Sampler_Name))
+            print ('\n >> using {} sampling method'.format(Sampler_Name))
 
             #N_run  = kwargs.get("N_run" , 500)
             N_tune = kwargs.get("N_tune" , 0)
             N_chains = kwargs.get("N_chains" , 1)
             N_cores = kwargs.get("N_cores" , min(4,N_chains))
             IsProgressbar = kwargs.get("IsProgressbar" , 1)
-            print ('\n >> using configuration :  {:12}, N_tune = {}, N_chains = {}, N_cores = {}\n'.format(Sampler_Name,N_tune,N_chains,N_cores))
+            print ('\n >> using configuration :  {:12}, N_tune = {}, N_chains = {}, N_cores = {}'.format(Sampler_Name,N_tune,N_chains,N_cores))
 
             self.CE.S = Storage_Container(2*N_chains*len(self.VarNames))
 
@@ -311,13 +311,15 @@ class MCU(object):
         except:
             if self.Prev_End:
                 self.start = self.Prev_End
-                print("\n >> Continouing previous calculations")
+                print("\n >> Continouing previous trace from results")
             else:
                 self.CE.t0 = time()
                 trace = None
                 self.start = [dict([(V, T+np.random.normal()*S*0.5)
                     for V,S,T in zip(self.VarNames,self.STDs ,self.Theta0 )])
                     for i_C in range(self.Custom_sample_args['chains'])]
+                print("\n >> Calculating departure points for each chain from given starting parameters")
+
 
         print("\n >> Starting sampler")
         with self.basic_model:
