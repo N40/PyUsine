@@ -169,7 +169,6 @@ class Chi2Eval():
             f.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
             f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
             f.close()
-
         return result
 
 class MCU(object):
@@ -225,6 +224,18 @@ class MCU(object):
         # Probable to be abolished
         S = Storage_Container(5*len(self.VarNames))
         self.CE = Chi2Eval(self.run, self.InitVals, time(), self.log_file_name, S)
+        
+    def Gen_Start_Points(sigma = 0.5):
+        start_points = []
+        for i_C in range(self.Custom_sample_args['chains']):
+            start = dict()
+            for V,S,T,P in zip(self.VarNames,self.STDs ,self.Theta0, self.InitVals ):
+                new_V = T + np.random.normal()*S
+                while (new_V < P[1] or new_V > P[2])
+                    new_V = T + np.random.normal()*S
+                start.update({V:new_V})
+            start_points.append(start)
+        return start_points
 
     def SetCovMatrix(self, **kwargs):
         try:
@@ -315,9 +326,7 @@ class MCU(object):
             else:
                 self.CE.t0 = time()
                 trace = None
-                self.start = [dict([(V, T+np.random.normal()*S*0.5)
-                    for V,S,T in zip(self.VarNames,self.STDs ,self.Theta0 )])
-                    for i_C in range(self.Custom_sample_args['chains'])]
+                self.start = self.Gen_Start_Points()
                 print("\n >> Calculating departure points for each chain from given starting parameters")
 
 
