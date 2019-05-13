@@ -306,22 +306,24 @@ class MCU(object):
     def Sample(self, N_run = 50):
         try:
             trace = self.trace
-            start =[trace.point(-1,i_C) for i_C in range(self.Custom_sample_args['chains'])]
+            self.start = [trace.point(-1,i_C) for i_C in range(self.Custom_sample_args['chains'])]
             print("\n >> Continouing previous trace")
         except:
             if self.Prev_End:
-                start = self.Prev_End
+                self.start = self.Prev_End
                 print("\n >> Continouing previous calculations")
             else:
                 self.CE.t0 = time()
                 trace = None
-                start = {}
+                self.start = [dict([(V, T+np.random.normal()*S*0.5)
+                    for V,S,T in zip(self.VarNames,self.STDs ,self.Theta0 )])
+                    for i_C in range(self.Custom_sample_args['chains'])]
 
         print("\n >> Starting sampler")
         with self.basic_model:
             trace = pm.sample(N_run,
                 trace = trace,
-                start = start,
+                start = self.start,
                 blocked = True,
                 **self.Custom_sample_args,
                 )
@@ -427,115 +429,6 @@ def RunMC(args):
         data = MC.Sample(N_run)
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
 
-
-def main():
-    # GENERAL INITIALIZATION
-    now = datetime.datetime.now()
-    t0 = time()
-    log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
-    S = Storage_Container()
-
-    # LOADING USINE CONFIGURATION
-    ParFile = sys.argv[1]
-    print ('\n >> Loading configuration from {}'.format(ParFile))
-
-    run = PP.PyRunPropagation()
-    run.PySetLogFile("run.log")
-    run.PySetClass(ParFile, 1, "OUT")
-
-    InitVals = run.PyGetInitVals()
-    VarNames = run.PyGetFreeParNames()
-    FixedVarNames = run.PyGetFixedParNames()
-    for i in range(len(VarNames)):
-        if bool(InitVals[i][4]):  #This position is the bool output of IsLogSampling
-            VarNames[i] = "LOG10_" + VarNames[i]
-
-    # SORTING OUT FIXED VARIABLES
-    print ('\n >> Not regarding the following FIXED parameters:')
-    for name in FixedVarNames:
-        print('{:25}'.format(name))
-
-
-    # SETTING PYMC3 PARAMETERS
-    basic_model = pm.Model()
-
-    CE = Chi2Eval(run, InitVals, t0, log_file_name, S)
-    ext_fct = TheanWrapper(CE.HalfNegChi2)
-
-    with basic_model:
-        ProScale = 1. # Scale for the sampling normal
-
-        # Priors for unknown model parameters
-        Priors = []
-        print ('\n >> Found {} free parameters, using the following values:'.format(len(VarNames)))
-        for name, vals in zip(VarNames, InitVals):
-            print('{:25}  [{:10}, {:15} +- {:10} ,{:10}]'.format(name, vals[1], vals[0], vals[3], vals[2]))
-            P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.5)
-            Priors.append(P)
-
-        theta = tt.as_tensor_variable(Priors)
-
-        # Likelihood (sampling distribution) of observations
-        likelihood = pm.DensityDist('likelihood',  lambda v: ext_fct(v), observed={'v': theta})
-
-    # RUNNING PYMC3
-    print('\n >> Saving calculation steps in {}'.format(log_file_name) )
-    f = open(log_file_name,'w+')
-
-    N_run  = 500
-    N_tune = 50
-    N_chains = 3
-    N_cores = 1
-    IsProgressbar = 0
-    print ("\n >> len(sys.argv) = ",len(sys.argv))
-    if len(sys.argv) >= 3:
-        N_run = int(sys.argv[2])
-    if len(sys.argv) >= 4:
-        N_tune = int(sys.argv[3])
-    if len(sys.argv) >= 5:
-        N_chains = int(sys.argv[4])
-    if len(sys.argv) >= 6:
-        IsProgressbar = int(sys.argv[5])
-    if len(sys.argv) >= 7:
-        N_cores = int(sys.argv[6])
-
-
-    print ('\n >> using configuration N_run = {}, N_tune = {}, N_chains = {}, N_cores = {}\n'.format(N_run,N_tune,N_chains,N_cores))
-
-    CE.S = Storage_Container(2*N_chains*len(VarNames))
-
-    with basic_model:
-
-        try:
-            cov = np.loadtxt(sys.argv[7] , delimiter = ',' )
-            print(cov.shape)
-            print("\n >> Covariance matrix {} found".format(sys.argv[7]))
-            S_ = cov
-            print("\n >> Using Cov Matrix  {} ".format(sys.argv[7]))
-        except:
-            print("\n >> Not using Cov Matrix")
-            S_ = np.diag([(ProScale*var[3])**2 for var in InitVals])
-        step = pm.Metropolis(S = S_, proposal_dist = pm.MultivariateNormalProposal )
-
-        print("\n >> Starting sampler")
-        CE.t0 = time()
-        trace = pm.sample(N_run,
-                        step = step,
-                        progressbar = IsProgressbar,
-                        chains = N_chains,
-                        cores = N_cores,
-                        tune = N_tune ,
-                        parallelize=True)
-
-    f.close()
-
-    time_stamp = datetime.datetime.now().strftime("%d.%m.%Y_%H:%M")
-    for i_c in range(N_chains):
-        output_filename = 'result_C{}_{}_{}_'.format(i_c, N_run,N_tune) + time_stamp
-        print ('saving chain {} as numpy array in {}'.format(i_c, output_filename))
-
-        post_data = np.array([trace.get_values(VarNames[j_v], chains = i_c) for j_v in range(len(VarNames))]).T
-        np.savetxt(output_filename, post_data, delimiter=',', header = str(VarNames))
 
 def Gen_Cov():
     print("\n >> Generating covariance matrix from data")
