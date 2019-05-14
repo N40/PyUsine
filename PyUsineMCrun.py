@@ -407,7 +407,7 @@ def RunMC(args):
         pass
 
     L_I = args['L']
-    if L_I > 0:
+    if L_I >= 0:
         MC.Prev_End = []
 
         for i_C in range(N_chains):
@@ -473,7 +473,7 @@ if __name__ == "__main__":
     parser.add_argument('-V', type=int, default=1, help='Verbose progressbar')
     parser.add_argument('-S', type=str, default='DEMetropolis', help='Sampler Name')
     parser.add_argument('-T', nargs = 2, help='Theta0: File, line number')
-    parser.add_argument('-L', type=int, default = 0, help='Last iteration index to load files from')
+    parser.add_argument('-L', type=int, default = -1, help='Last iteration index to load files from')
 
 
     args = vars(parser.parse_args())
