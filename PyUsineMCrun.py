@@ -225,7 +225,7 @@ class MCU(object):
         S = Storage_Container(5*len(self.VarNames))
         self.CE = Chi2Eval(self.run, self.InitVals, time(), self.log_file_name, S)
         
-    def Gen_Start_Points(self, sigma = 0.33):
+    def Gen_Start_Points(self, sigma = 0.1):
         start_points = []
         for i_C in range(self.Custom_sample_args['chains']):
             start = dict()
