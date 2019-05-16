@@ -250,7 +250,7 @@ class MCU(object):
 
     def InitPyMC(self):
         self.basic_model = pm.Model()
-        ext_fct = TheanWrapper(self.CE.HalfNegChi2)
+        ext_fct = TheanWrapperGrad(self.CE.HalfNegChi2, np.array(self.STDs))
 
         with self.basic_model:
             ProScale = 1. # Scale for the sampling normal
@@ -283,8 +283,6 @@ class MCU(object):
         open(self.log_file_name,'w+').close()
         with self.basic_model:
             Sampler_Name = kwargs.get("Sampler_Name","Metropolis")
-            print ('\n >> using {} sampling method'.format(Sampler_Name))
-
             #N_run  = kwargs.get("N_run" , 500)
             N_tune = kwargs.get("N_tune" , 0)
             N_chains = kwargs.get("N_chains" , 1)
@@ -297,7 +295,9 @@ class MCU(object):
             if Sampler_Name == "DEMetropolis":
                 step = pm.DEMetropolis(S = self.Cov, proposal_dist = pm.MultivariateNormalProposal )
             elif Sampler_Name == "Metropolis":
-                step = pm.Metropolis(S = self.Cov, proposal_dist = pm.MultivariateNormalProposal )
+                step = pm.Metropolis(S = self.Cov, proposal_dist = pm.MultivariateNormalProposal , blocked = True)
+            elif Sampler_Name == "Hamiltonian":
+                step = pm.HamiltonianMC( )
             else:
                 print('\n >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
                 step = pm.Metropolis(S = self.Cov, proposal_dist = pm.MultivariateNormalProposal )
@@ -323,11 +323,19 @@ class MCU(object):
             if self.Prev_End:
                 self.start = self.Prev_End
                 print("\n >> Continouing previous trace from results")
-            else:
+            elif self.Custom_sample_args['chains'] > 1:
                 self.CE.t0 = time()
                 trace = None
                 self.start = self.Gen_Start_Points()
                 print("\n >> Calculating departure points for each chain from given starting parameters")
+            else:
+                self.CE.t0 = time()
+                self.start = {}
+                trace = None 
+                if self.Custom_sample_args['step'].name == 'hmc':
+                    print("\n >> Setting N_Tune to 5 in order to optimize HamiltonianMC")
+                    self.Custom_sample_args['tune'] = 5
+
 
 
         print("\n >> Starting sampler")
@@ -338,7 +346,9 @@ class MCU(object):
                 blocked = True,
                 **self.Custom_sample_args,
                 )
-
+        
+        self.Custom_sample_args['tune'] = 0
+        
         post_data = np.array([
             [trace.get_values(self.VarNames[j_V], chains = i_C) for j_V in range(len(self.VarNames))]
                         for i_C in range(self.Custom_sample_args['chains'])]  )
