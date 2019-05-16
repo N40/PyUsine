@@ -139,15 +139,25 @@ class Chi2Eval():
         self.t0 = t0
         self.log_file_name = log_file_name
         self.S = S
+        
+    def Chi2(self, theta, Option = 1):
+        return self.HalfNegChi2(theta, Option)
 
-    def HalfNegChi2(self, theta, IsVerb = 1):
+    def HalfNegChi2(self, theta, Option = 1):
+        '''
+        Option:
+            1 : Normal function call
+            0 : Call, without logging
+            2 : Used for gradient calculation
+            3 : Usde for gradient calculation, ignoring boundaries
+        '''
         theta = list(theta)
         chi2 = 0
         InBoundary = True
-        Flag = str(int(IsVerb))
+        Flag = str(int(Option))
 
         for par,val in zip(theta, self.InitVals):
-            if (val[1] > par or par > val[2]):
+            if ((val[1] > par or par > val[2]) and Option != 3):
                 chi2 = 2.0e20
                 InBoundary = False
 
@@ -164,7 +174,7 @@ class Chi2Eval():
             self.S.Add(theta,chi2)
 
         result = (-0.5*chi2)
-        if (bool(IsVerb)):
+        if (bool(Option)):
             f = open(self.log_file_name,'a+')
             f.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
             f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
@@ -251,6 +261,7 @@ class MCU(object):
     def InitPyMC(self):
         self.basic_model = pm.Model()
         ext_fct = TheanWrapperGrad(self.CE.HalfNegChi2, np.array(self.STDs))
+        ext_fct.logpgrad.GradVerbose = 3
 
         with self.basic_model:
             ProScale = 1. # Scale for the sampling normal
@@ -291,16 +302,19 @@ class MCU(object):
             print ('\n >> using configuration :  {:12}, N_tune = {}, N_chains = {}, N_cores = {}'.format(Sampler_Name,N_tune,N_chains,N_cores))
 
             self.CE.S = Storage_Container(2*N_chains*len(self.VarNames))
-
+            """
+            calling S = self.Cov[::-1,::-1] is a neccessary hack in order to avoid a problem in the PyMC3 code
+            the order of the variables is inverted (by accident?) durint the BlockStep().__init__()
+            """
             if Sampler_Name == "DEMetropolis":
-                step = pm.DEMetropolis(S = self.Cov, proposal_dist = pm.MultivariateNormalProposal )
+                step = pm.DEMetropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal )
             elif Sampler_Name == "Metropolis":
-                step = pm.Metropolis(S = self.Cov, proposal_dist = pm.MultivariateNormalProposal , blocked = True)
+                step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True)
             elif Sampler_Name == "Hamiltonian":
                 step = pm.HamiltonianMC( )
             else:
                 print('\n >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
-                step = pm.Metropolis(S = self.Cov, proposal_dist = pm.MultivariateNormalProposal )
+                step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True )
 
             self.Custom_sample_args = {
                 "step"        : step,
@@ -318,6 +332,7 @@ class MCU(object):
         try:
             trace = self.trace
             self.start = [trace.point(-1,i_C) for i_C in range(self.Custom_sample_args['chains'])]
+            self.Custom_sample_args['tune'] = 0
             print("\n >> Continouing previous trace")
         except:
             if self.Prev_End:
@@ -331,19 +346,18 @@ class MCU(object):
             else:
                 self.CE.t0 = time()
                 self.start = {}
-                trace = None 
-                if self.Custom_sample_args['step'].name == 'hmc':
-                    print("\n >> Setting N_Tune to 5 in order to optimize HamiltonianMC")
-                    self.Custom_sample_args['tune'] = 5
-
-
+                trace = None
+                try:
+                    if self.Custom_sample_args['step'].name == 'hmc':
+                        print("\n >> Setting N_Tune to 5 in order to optimize HamiltonianMC")
+                        self.Custom_sample_args['tune'] = 5
+                except: pass
 
         print("\n >> Starting sampler")
         with self.basic_model:
             trace = pm.sample(N_run,
                 trace = trace,
                 start = self.start,
-                blocked = True,
                 **self.Custom_sample_args,
                 )
         
@@ -375,6 +389,10 @@ class MCU(object):
 
             post_data = np.array([self.trace.get_values(self.VarNames[j_v]) for j_v in range(len(self.VarNames))]).T
             np.savetxt(output_filename, post_data, delimiter=',', header = str(self.VarNames))
+            
+    def GetCovMatrix(self):
+        post_data = np.array([self.trace.get_values(self.VarNames[j_v]) for j_v in range(len(self.VarNames))]).T
+        return np.cov(post_data.T)
 
 def RunMC(args):
     now = datetime.datetime.now()
@@ -398,6 +416,8 @@ def RunMC(args):
 
     if Result_Loc != '':
         Result_Loc += '/'
+        
+    log_file_name = Result_Loc + log_file_name
 
     Theta0 = None
     if args['T']:
@@ -407,14 +427,14 @@ def RunMC(args):
         Theta0 = list(eval(Theta0))
         print (Theta0)
 
-    MC = MCU()
-    MC.InitPar(ParFile, log_file_name, Theta0)
-    MC.InitPyMC()
-
     try:
         os.mkdir(Result_Loc)
     except:
-        pass
+        pass        
+        
+    MC = MCU()
+    MC.InitPar(ParFile, log_file_name, Theta0)
+    MC.InitPyMC()
 
     L_I = args['L']
     if L_I >= 0:
@@ -446,9 +466,22 @@ def RunMC(args):
     )
 
     for i_I in range(L_I+1, N_I + L_I+1):
-        print(' >> Starging interation {}'.format(i_I + 1))
+        print(' >> Starging interation {}'.format(i_I))
+        
+        if Sampler_Name == 'Hamiltonian':
+            log_file_name = Result_Loc + 'logger_I{}'.format((i_I))
+            MC.log_file_name = log_file_name
+            MC.CE.log_file_name = log_file_name
+            print(' >> Changing logfile to {}'.format(log_file_name))
+        
         data = MC.Sample(N_run)
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
+        
+        '''
+        if((i_I-1)%10 == 0):
+            MC.Cov = MC.GetCovMatrix()
+            MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
+        '''
 
 
 def Gen_Cov():
