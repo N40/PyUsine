@@ -324,8 +324,8 @@ class MCU(object):
                 "tune"        : N_tune ,
                 "parallelize" : True}
 
-            self.trace = None
-            self.Prev_End = None
+        self.trace = None
+        self.Prev_End = None
 
 
     def Sample(self, N_run = 50):
@@ -361,7 +361,7 @@ class MCU(object):
                 **self.Custom_sample_args,
                 )
         
-        self.Custom_sample_args['tune'] = 0
+            self.Custom_sample_args['tune'] = 0
         
         post_data = np.array([
             [trace.get_values(self.VarNames[j_V], chains = i_C) for j_V in range(len(self.VarNames))]
