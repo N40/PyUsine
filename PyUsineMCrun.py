@@ -133,12 +133,14 @@ class Chi2Eval():
     Class in order to mediate the execution and documentation of the Chi2 function calls
     Could be merged into the MCU class in future
     """
+
     def __init__(self, run, InitVals, t0, log_file_name, S):
         self.run = run
         self.InitVals = InitVals
         self.t0 = t0
         self.log_file_name = log_file_name
         self.S = S
+        self.step = None
         
     def Chi2(self, theta, Option = 1):
         return self.HalfNegChi2(theta, Option)
@@ -173,11 +175,16 @@ class Chi2Eval():
             chi2 = self.run.PyChi2(theta)
             self.S.Add(theta,chi2)
 
+
         result = (-0.5*chi2)
         if (bool(Option)):
             f = open(self.log_file_name,'a+')
             f.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
             f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
+            try:
+                f.write(' {:12}'.format(round(self.step.step_size,6)))
+            except:
+                pass
             f.close()
         return result
 
@@ -261,7 +268,7 @@ class MCU(object):
     def InitPyMC(self):
         self.basic_model = pm.Model()
         ext_fct = TheanWrapperGrad(self.CE.HalfNegChi2, np.array(self.STDs))
-        ext_fct.logpgrad.GradVerbose = 3
+        ext_fct.logpgrad.GradVerbose = 2
 
         with self.basic_model:
             ProScale = 1. # Scale for the sampling normal
@@ -311,7 +318,8 @@ class MCU(object):
             elif Sampler_Name == "Metropolis":
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True)
             elif Sampler_Name == "Hamiltonian":
-                step = pm.HamiltonianMC( )
+                step = pm.HamiltonianMC( step_scale = 0.01, path_length = 0.05, target_accept = 0.8)
+                self.CE.step = step
             else:
                 print('\n >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True )
@@ -347,11 +355,6 @@ class MCU(object):
                 self.CE.t0 = time()
                 self.start = {}
                 trace = None
-                try:
-                    if self.Custom_sample_args['step'].name == 'hmc':
-                        print("\n >> Setting N_Tune to 5 in order to optimize HamiltonianMC")
-                        self.Custom_sample_args['tune'] = 5
-                except: pass
 
         print("\n >> Starting sampler")
         with self.basic_model:
@@ -477,8 +480,9 @@ def RunMC(args):
         data = MC.Sample(N_run)
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
         
-        
-        if((i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0):
+
+        if(Sampler_Name != 'Hamiltonian' and
+           (i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0):
             MC.Cov = MC.GetCovMatrix()
             MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
             
