@@ -466,7 +466,7 @@ def RunMC(args):
     )
 
     for i_I in range(L_I+1, N_I + L_I+1):
-        print(' >> Starging interation {}'.format(i_I))
+        print('\n >> Starging interation {}'.format(i_I))
         
         if Sampler_Name == 'Hamiltonian':
             log_file_name = Result_Loc + 'logger_I{}'.format((i_I))
@@ -477,11 +477,16 @@ def RunMC(args):
         data = MC.Sample(N_run)
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
         
-        '''
-        if((i_I-1)%10 == 0):
+        
+        if((i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0):
             MC.Cov = MC.GetCovMatrix()
             MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
-        '''
+            
+            cov_file = Result_Loc +'Cov_I{}{}'.format(i_I,Key)
+            print(' >> Updating Covariance Matrix from present Results, Saving in {}'.format(cov_file))
+            np.savetxt(cov_file, MC.Cov, delimiter = ', ', header = ',  '.join(MC.VarNames))
+
+        
 
 
 def Gen_Cov():
@@ -508,7 +513,7 @@ if __name__ == "__main__":
     # execute only if run as a script
     parser = argparse.ArgumentParser()
     parser.add_argument('-C', type=int, nargs = 3, default=[50, 0, 1] , help='N_Run, N_Tune, N_Chains')
-    parser.add_argument('-M', type=bool, default=False , help='Multicore')
+    parser.add_argument('-M', type=int, default=1 , help='Multicore')
     parser.add_argument('-I', type=int, default=1 , help='N_Iterations')
     parser.add_argument('-P', type=str, help='Input arameter file')
     parser.add_argument('-O', type=str, default='OUT', help='Output directory')
@@ -517,6 +522,7 @@ if __name__ == "__main__":
     parser.add_argument('-S', type=str, default='DEMetropolis', help='Sampler Name')
     parser.add_argument('-T', nargs = 2, help='Theta0: File, line number')
     parser.add_argument('-L', type=int, default = -1, help='Last iteration index to load files from')
+    parser.add_argument('-U', type=int, default=-1 , help='number of Iterations after which the Cov Matrix is to be updated')
 
 
     args = vars(parser.parse_args())
