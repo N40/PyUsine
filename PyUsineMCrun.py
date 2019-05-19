@@ -318,7 +318,7 @@ class MCU(object):
             elif Sampler_Name == "Metropolis":
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True)
             elif Sampler_Name == "Hamiltonian":
-                step = pm.HamiltonianMC( step_scale = 0.01, path_length = 0.05, target_accept = 0.8)
+                step = pm.HamiltonianMC( step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
                 self.CE.step = step
             else:
                 print('\n >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
