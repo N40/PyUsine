@@ -134,14 +134,14 @@ class Chi2Eval():
     Could be merged into the MCU class in future
     """
 
-    def __init__(self, run, InitVals, t0, log_file_name, S):
-        self.run = run
-        self.InitVals = InitVals
-        self.t0 = t0
-        self.log_file_name = log_file_name
-        self.S = S
-        self.step = None
-        
+    def __init__(self):
+        self.run = PP.PyRunPropagation()
+        self.InitVals = []
+        self.t0 = time()
+        self.log_file_name = 'logger'
+        self.S = Storage_Container(5)
+        self.step = None  # introduced for debugging reasons concerning HamiltonianMC
+
     def Chi2(self, theta, Option = 1):
         return self.HalfNegChi2(theta, Option)
 
@@ -188,14 +188,14 @@ class Chi2Eval():
             f.close()
         return result
 
-class MCU(object):
+class MCU(Chi2Eval):
     """
     This class contains all the steps and routines for generating MCMC Fits
     """
     def __init__(self, **kwargs):
-        self.run = PP.PyRunPropagation()
         self.Cov = None
         self.basic_model = None
+        super().__init__()
 
 
     def InitPar(self, ParFile, log_file_name = None, Theta0 = None):
@@ -215,7 +215,7 @@ class MCU(object):
         self.ParFile = ParFile
         print ('\n >> Loading configuration from {}'.format(self.ParFile))
 
-        self.run.PySetLogFile("run.log")
+        self.run.PySetLogFile("run.log") # this is the USINE log file, not the MCMC one
         self.run.PySetClass(self.ParFile, 1, "OUT")
 
         self.InitVals = self.run.PyGetInitVals()
@@ -237,11 +237,6 @@ class MCU(object):
         for name in self.FixedVarNames:
             print('{:25}'.format(name))
 
-        # Initializing Chi2 calling class
-        # Probable to be abolished
-        S = Storage_Container(5*len(self.VarNames))
-        self.CE = Chi2Eval(self.run, self.InitVals, time(), self.log_file_name, S)
-        
     def Gen_Start_Points(self, sigma = 0.1):
         start_points = []
         for i_C in range(self.Custom_sample_args['chains']):
@@ -267,19 +262,22 @@ class MCU(object):
 
     def InitPyMC(self):
         self.basic_model = pm.Model()
-        ext_fct = TheanWrapperGrad(self.CE.HalfNegChi2, np.array(self.STDs))
+        ext_fct = TheanWrapperGrad(self.HalfNegChi2, np.array(self.STDs))
         ext_fct.logpgrad.GradVerbose = 2
 
         with self.basic_model:
             ProScale = 1. # Scale for the sampling normal
 
-            # Priors for unknown model parameters
+            # Setting up the Priors (this is not the sampling probability)
             Priors = []
             print ('\n >> Using {} free parameters, using the following values:'.format(len(self.VarNames)))
             for name, vals in zip(self.VarNames, self.InitVals):
                 print('{:25}  [{:10}, {:15} +- {:10} ,{:10}]'.format(name, vals[1], vals[0], vals[3], vals[2]))
-                P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.5)
+                P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.0)
                 Priors.append(P)
+                # not sure about this, but
+                # using symmetric priors vanishes their influence
+                # this secion is only to be taken care of, if the priors are die be different than guassian shape
 
             theta = tt.as_tensor_variable(Priors)
 
@@ -308,7 +306,7 @@ class MCU(object):
             IsProgressbar = kwargs.get("IsProgressbar" , 1)
             print ('\n >> using configuration :  {:12}, N_tune = {}, N_chains = {}, N_cores = {}'.format(Sampler_Name,N_tune,N_chains,N_cores))
 
-            self.CE.S = Storage_Container(2*N_chains*len(self.VarNames))
+            self.S = Storage_Container(2*N_chains*len(self.VarNames))
             """
             calling S = self.Cov[::-1,::-1] is a neccessary hack in order to avoid a problem in the PyMC3 code
             the order of the variables is inverted (by accident?) durint the BlockStep().__init__()
@@ -319,7 +317,7 @@ class MCU(object):
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True)
             elif Sampler_Name == "Hamiltonian":
                 step = pm.HamiltonianMC( step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
-                self.CE.step = step
+                self.step = step  # debugging feature for HamiltonianMC
             else:
                 print('\n >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True )
@@ -347,12 +345,12 @@ class MCU(object):
                 self.start = self.Prev_End
                 print("\n >> Continouing previous trace from results")
             elif self.Custom_sample_args['chains'] > 1:
-                self.CE.t0 = time()
+                self.t0 = time()
                 trace = None
                 self.start = self.Gen_Start_Points()
-                print("\n >> Calculating departure points for each chain from given starting parameters")
+                print("\n >> Using departure points for sampled each chain around given starting parameters")
             else:
-                self.CE.t0 = time()
+                self.t0 = time()
                 self.start = {}
                 trace = None
 
@@ -363,9 +361,9 @@ class MCU(object):
                 start = self.start,
                 **self.Custom_sample_args,
                 )
-        
+
             self.Custom_sample_args['tune'] = 0
-        
+
         post_data = np.array([
             [trace.get_values(self.VarNames[j_V], chains = i_C) for j_V in range(len(self.VarNames))]
                         for i_C in range(self.Custom_sample_args['chains'])]  )
@@ -392,7 +390,7 @@ class MCU(object):
 
             post_data = np.array([self.trace.get_values(self.VarNames[j_v]) for j_v in range(len(self.VarNames))]).T
             np.savetxt(output_filename, post_data, delimiter=',', header = str(self.VarNames))
-            
+
     def GetCovMatrix(self):
         post_data = np.array([self.trace.get_values(self.VarNames[j_v]) for j_v in range(len(self.VarNames))]).T
         return np.cov(post_data.T)
@@ -419,7 +417,7 @@ def RunMC(args):
 
     if Result_Loc != '':
         Result_Loc += '/'
-        
+
     log_file_name = Result_Loc + log_file_name
 
     Theta0 = None
@@ -433,8 +431,8 @@ def RunMC(args):
     try:
         os.mkdir(Result_Loc)
     except:
-        pass        
-        
+        pass
+
     MC = MCU()
     MC.InitPar(ParFile, log_file_name, Theta0)
     MC.InitPyMC()
@@ -470,27 +468,26 @@ def RunMC(args):
 
     for i_I in range(L_I+1, N_I + L_I+1):
         print('\n >> Starging interation {}'.format(i_I))
-        
+
         if Sampler_Name == 'Hamiltonian':
             log_file_name = Result_Loc + 'logger_I{}'.format((i_I))
             MC.log_file_name = log_file_name
-            MC.CE.log_file_name = log_file_name
             print(' >> Changing logfile to {}'.format(log_file_name))
-        
+
         data = MC.Sample(N_run)
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
-        
+
 
         if(Sampler_Name != 'Hamiltonian' and
            (i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0):
             MC.Cov = MC.GetCovMatrix()
             MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
-            
+
             cov_file = Result_Loc +'Cov_I{}{}'.format(i_I,Key)
             print(' >> Updating Covariance Matrix from present Results, Saving in {}'.format(cov_file))
             np.savetxt(cov_file, MC.Cov, delimiter = ', ', header = ',  '.join(MC.VarNames))
 
-        
+
 
 
 def Gen_Cov():
