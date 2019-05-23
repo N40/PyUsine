@@ -230,7 +230,8 @@ class MCU(Chi2Eval):
             self.Theta0.append(self.InitVals[i][0])
             self.STDs.append(self.InitVals[i][3])
             if bool(self.InitVals[i][4]):  #This position is the bool output of IsLogSampling
-                self.VarNames[i] = "LOG10_" + self.VarNames[i]
+                # self.VarNames[i] = "LOG10_" + self.VarNames[i] # maybe nomore necessary
+                pass
 
         # SORTING OUT FIXED VARIABLES
         print ('\n >> Not regarding the following FIXED parameters:')
