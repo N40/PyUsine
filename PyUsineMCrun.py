@@ -3,7 +3,6 @@ import scipy.optimize
 
 import pymc3 as pm
 from pymc3 import  *
-print('Running on PyMC3 v{}'.format(pm.__version__))
 
 import theano
 import theano.tensor as tt
@@ -51,6 +50,10 @@ class Storage_Container():
 
 # define a theano Op for our likelihood function
 class TheanWrapper(tt.Op):
+    '''
+    This function is no longer used.
+    It only serves for non-gradient based methods.
+    '''
     itypes = [tt.dvector] # expects a vector of parameter values when called
     otypes = [tt.dscalar] # outputs a single scalar value
 
@@ -118,7 +121,6 @@ class LogLikeGrad(tt.Op):
         self.STDs = STDs
         self.GradVerbose = 0
 
-
     def perform(self, node, inputs, outputs):
         theta, = inputs
         if not np.array(self.STDs).any():
@@ -133,7 +135,6 @@ class Chi2Eval():
     Class in order to mediate the execution and documentation of the Chi2 function calls
     Could be merged into the MCU class in future
     """
-
     def __init__(self):
         self.run = PP.PyRunPropagation()
         self.InitVals = []
@@ -175,16 +176,16 @@ class Chi2Eval():
             chi2 = self.run.PyChi2(theta)
             self.S.Add(theta,chi2)
 
-
         result = (-0.5*chi2)
         if (bool(Option)):
             f = open(self.log_file_name,'a+')
+
+            # HamiltonianMC debugging by displaying the present step size
+            try: f.write(' {:12}'.format(round(self.step.step_size,6)))
+            except: pass
+
             f.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
             f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
-            try:
-                f.write(' {:12}'.format(round(self.step.step_size,6)))
-            except:
-                pass
             f.close()
         return result
 
@@ -197,23 +198,21 @@ class MCU(Chi2Eval):
         self.basic_model = None
         super().__init__()
 
-
     def InitPar(self, ParFile, log_file_name = None, Theta0 = None):
         """
         Loading Usine Configuration and setting all intern parameters
         correspondingly
         """
-        # GENERAL INITIALIZATION
         now = datetime.datetime.now()
         if log_file_name:
             self.log_file_name = log_file_name
         else:
             self.log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
-        print ('\n >> Saving futher Calculations in {}'.format(self.log_file_name))
+        print (' >> Saving futher Calculations in {}'.format(self.log_file_name))
         open(self.log_file_name,'w+').close() # wiping the logfile
 
         self.ParFile = ParFile
-        print ('\n >> Loading configuration from {}'.format(self.ParFile))
+        print (' >> Loading configuration from {}'.format(self.ParFile))
 
         self.run.PySetLogFile("run.log") # this is the USINE log file, not the MCMC one
         self.run.PySetClass(self.ParFile, 1, "OUT")
@@ -234,7 +233,7 @@ class MCU(Chi2Eval):
                 pass
 
         # SORTING OUT FIXED VARIABLES
-        print ('\n >> Not regarding the following FIXED parameters:')
+        print (' >> Not regarding the following FIXED parameters:')
         for name in self.FixedVarNames:
             print('{:25}'.format(name))
 
@@ -253,10 +252,10 @@ class MCU(Chi2Eval):
     def SetCovMatrix(self, **kwargs):
         try:
             self.Cov = np.loadtxt(kwargs["Cov"] , delimiter = ',' )
-            print("\n >> Valid Covariance matrix {} found".format(kwargs["Cov"]))
+            print(" >> Valid Covariance matrix {} found".format(kwargs["Cov"]))
         except:
             Scale = kwargs.get("Scale",0.5)
-            print("\n >> No valid Covariance matric found",
+            print(" >> No valid Covariance matric found",
                   "\n >> creating diagnonal one with scale {}".format(Scale))
             self.Cov = np.diag([(Scale*var[3])**2 for var in self.InitVals])
 
@@ -271,7 +270,7 @@ class MCU(Chi2Eval):
 
             # Setting up the Priors (this is not the sampling probability)
             Priors = []
-            print ('\n >> Using {} free parameters, using the following values:'.format(len(self.VarNames)))
+            print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
             for name, vals in zip(self.VarNames, self.InitVals):
                 print('{:25}  [{:10}, {:15} +- {:10} ,{:10}]'.format(name, vals[1], vals[0], vals[3], vals[2]))
                 P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.0)
@@ -296,7 +295,7 @@ class MCU(Chi2Eval):
             self.InitPyMC()
 
         # RUNNING PYMC3
-        print('\n >> Saving calculation steps in {}'.format(self.log_file_name) )
+        print(' >> Logging calculation steps in {}'.format(self.log_file_name) )
         open(self.log_file_name,'w+').close()
         with self.basic_model:
             Sampler_Name = kwargs.get("Sampler_Name","Metropolis")
@@ -320,7 +319,7 @@ class MCU(Chi2Eval):
                 step = pm.HamiltonianMC( step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
                 self.step = step  # debugging feature for HamiltonianMC
             else:
-                print('\n >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
+                print(' >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True )
 
             self.Custom_sample_args = {
@@ -340,22 +339,22 @@ class MCU(Chi2Eval):
             trace = self.trace
             self.start = [trace.point(-1,i_C) for i_C in range(self.Custom_sample_args['chains'])]
             self.Custom_sample_args['tune'] = 0
-            print("\n >> Continouing previous trace")
+            print(" >> Continouing previous trace")
         except:
             if self.Prev_End:
                 self.start = self.Prev_End
-                print("\n >> Continouing previous trace from results")
+                print(" >> Continouing previous trace from results")
             elif self.Custom_sample_args['chains'] > 1:
                 self.t0 = time()
                 trace = None
                 self.start = self.Gen_Start_Points()
-                print("\n >> Using departure points for sampled each chain around given starting parameters")
+                print(" >> Using departure points for sampled each chain around given starting parameters")
             else:
                 self.t0 = time()
                 self.start = {}
                 trace = None
 
-        print("\n >> Starting sampler")
+        print(" >> Starting sampler")
         with self.basic_model:
             trace = pm.sample(N_run,
                 trace = trace,
