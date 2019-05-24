@@ -181,7 +181,9 @@ class Chi2Eval():
             f = open(self.log_file_name,'a+')
 
             # HamiltonianMC debugging by displaying the present step size
-            try: f.write(' {:12}'.format(round(self.step.step_size,6)))
+            try:
+                f.write(' {:12}'.format(round(self.step.step_size,6)))
+                f.write(' {:6} '.format((self.step.adapt_step_size)))
             except: pass
 
             f.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
@@ -316,8 +318,12 @@ class MCU(Chi2Eval):
             elif Sampler_Name == "Metropolis":
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True)
             elif Sampler_Name == "Hamiltonian":
-                step = pm.HamiltonianMC( step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
+                # these settings for HMC are very tricky. allowing adapt_step_size=True may lead to extr. small step sizes causing the method to stuck.
+                step = pm.HamiltonianMC(adapt_step_size= 0, step_scale = 0.005, path_length = 0.1 )#step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
                 self.step = step  # debugging feature for HamiltonianMC
+                print(self.step.adapt_step_size)
+                self.step.adapt_step_size = False
+
             else:
                 print(' >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True )
@@ -488,28 +494,6 @@ def RunMC(args):
             np.savetxt(cov_file, MC.Cov, delimiter = ', ', header = ',  '.join(MC.VarNames))
 
 
-
-
-def Gen_Cov():
-    print("\n >> Generating covariance matrix from data")
-    result_file = sys.argv[2]
-    print(" >> Loading results from {}".format(result_file))
-
-    if len(sys.argv) > 5:
-        cov_file = sys.argv[4]
-    else:
-        cov_file = "Cov_" + result_file.split(":")[0].split("_")[1] +  '_' + sys.argv[1].split(".par")[0]
-
-    post_data = np.loadtxt(result_file, delimiter = ',')
-    covariance = np.cov(post_data.T)
-
-    with open(result_file,'r') as r_file:
-        VarNames = r_file.readline()[2:]
-
-    print(" >> Sving covariance matrix in {}".format(cov_file))
-    np.savetxt(cov_file, covariance, delimiter = ', ', header = VarNames)
-
-
 if __name__ == "__main__":
     # execute only if run as a script
     parser = argparse.ArgumentParser()
@@ -524,7 +508,6 @@ if __name__ == "__main__":
     parser.add_argument('-T', nargs = 2, help='Theta0: File, line number')
     parser.add_argument('-L', type=int, default = -1, help='Last iteration index to load files from')
     parser.add_argument('-U', type=int, default=-1 , help='number of Iterations after which the Cov Matrix is to be updated')
-
 
     args = vars(parser.parse_args())
     print(args)
