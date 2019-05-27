@@ -178,17 +178,17 @@ class Chi2Eval():
 
         result = (-0.5*chi2)
         if (bool(Option)):
-            f = open(self.log_file_name,'a+')
+            lf = open(self.log_file_name,'a+')
 
             # HamiltonianMC debugging by displaying the present step size
             try:
-                f.write(' {:12}'.format(round(self.step.step_size,6)))
-                f.write(' {:6} '.format((self.step.adapt_step_size)))
+                lf.write(' {:12}'.format(round(self.step.step_size,6)))
+                #lf.write(' {:6} '.format((self.step.adapt_step_size)))
             except: pass
 
-            f.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
-            f.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
-            f.close()
+            lf.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
+            lf.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
+            lf.close()
         return result
 
 class MCU(Chi2Eval):
