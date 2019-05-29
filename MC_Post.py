@@ -1,7 +1,6 @@
 
 from copy import deepcopy
 import numpy.random as nr
-from pymc3.stats import autocorr
 import os
 
 import numpy as np
