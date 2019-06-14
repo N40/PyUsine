@@ -275,7 +275,8 @@ class MCU(Chi2Eval):
             print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
             for name, vals in zip(self.VarNames, self.InitVals):
                 print('{:25}  [{:10}, {:15} +- {:10} ,{:10}]'.format(name, vals[1], vals[0], vals[3], vals[2]))
-                P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.0)
+                #P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.0)
+                P = pm.Uniform(name, lower=vals[1], upper=vals[2])
                 Priors.append(P)
                 # not sure about this, but
                 # using symmetric priors vanishes their influence
