@@ -244,7 +244,7 @@ class MCU(Chi2Eval):
         for i_C in range(self.Custom_sample_args['chains']):
             start = dict()
             for V,S,T,P in zip(self.VarNames,self.STDs ,self.Theta0, self.InitVals ):
-                new_V = T + np.random.normal()*S
+                new_V = T + np.random.normal()*S*sigma
                 while (new_V < P[1] or new_V > P[2]):
                     new_V = T + np.random.normal()*S
                 start.update({V:new_V})
@@ -274,7 +274,7 @@ class MCU(Chi2Eval):
             Priors = []
             print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
             for name, vals in zip(self.VarNames, self.InitVals):
-                print('{:25}  [{:10}, {:15} +- {:10} ,{:10}]'.format(name, vals[1], vals[0], vals[3], vals[2]))
+                print('{:25}  [{:10.3f}, {:15.3f} +- {:10.3f} ,{:10.3f}]'.format(name, vals[1], vals[0], vals[3], vals[2]))
                 #P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.0)
                 P = pm.Uniform(name, lower=vals[1], upper=vals[2])
                 Priors.append(P)
@@ -293,7 +293,7 @@ class MCU(Chi2Eval):
         if not self.VarNames:
             self.InitPar(kwargs["ParFile"])
         try: self.Cov[0][0]
-        except TypeError: self.SetCovMatrix()
+        except TypeError: self.SetCovMatrix(Scale = 1.2)
         if not self.basic_model:
             self.InitPyMC()
 
@@ -320,10 +320,13 @@ class MCU(Chi2Eval):
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True)
             elif Sampler_Name == "Hamiltonian":
                 # these settings for HMC are very tricky. allowing adapt_step_size=True may lead to extr. small step sizes causing the method to stuck.
-                step = pm.HamiltonianMC(adapt_step_size= 0, step_scale = 0.005, path_length = 0.1 )#step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
+                length = max(0.3, 1.5*np.sqrt(np.sum(np.array(self.STDs)**2)))
+                sub_l  = length/7
+                step = pm.HamiltonianMC(adapt_step_size= 0, step_scale = sub_l, path_length = length, is_cov = True,  scaling = (np.array(self.STDs[::-1])**2)*10 )#step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
                 self.step = step  # debugging feature for HamiltonianMC
-                print(self.step.adapt_step_size)
+                #print(self.step.adapt_step_size)
                 self.step.adapt_step_size = False
+                print(' >> Hamiltonian settings: {:7.4f} / {:7.4f}  = {:4}'.format(length, sub_l/(len(self.STDs)**0.25), int(length / (sub_l/(len(self.STDs)**0.25)) )))
 
             else:
                 print(' >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
@@ -358,7 +361,7 @@ class MCU(Chi2Eval):
                 print(" >> Using departure points for sampled each chain around given starting parameters")
             else:
                 self.t0 = time()
-                self.start = {}
+                self.start = self.Gen_Start_Points(0.0)
                 trace = None
 
         print(" >> Starting sampler")
@@ -404,7 +407,7 @@ class MCU(Chi2Eval):
 
 def RunMC(args):
     now = datetime.datetime.now()
-    log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
+    log_file_name = "logger" # + '_' + datetime.datetime.now().strftime("%H_%M_%S")
 
     ParFile = args['P']
     if ParFile == None:
