@@ -322,7 +322,7 @@ class MCU(Chi2Eval):
                 # these settings for HMC are very tricky. allowing adapt_step_size=True may lead to extr. small step sizes causing the method to stuck.
                 length = max(0.3, 1.5*np.sqrt(np.sum(np.array(self.STDs)**2)))
                 sub_l  = length/7
-                step = pm.HamiltonianMC(adapt_step_size= 0, step_scale = sub_l, path_length = length, is_cov = True,  scaling = (np.array(self.STDs[::-1])**2)*10 )#step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
+                step = pm.HamiltonianMC(adapt_step_size= 0, step_scale = sub_l, path_length = length, is_cov = True,  scaling = self.Cov[::-1,::-1] )#step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
                 self.step = step  # debugging feature for HamiltonianMC
                 #print(self.step.adapt_step_size)
                 self.step.adapt_step_size = False
@@ -338,7 +338,8 @@ class MCU(Chi2Eval):
                 "chains"      : N_chains,
                 "cores"       : N_cores,
                 "tune"        : N_tune ,
-                "parallelize" : True}
+                #"parallelize" : True,
+                }
 
         self.trace = None
         self.Prev_End = None
