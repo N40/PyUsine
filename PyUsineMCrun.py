@@ -491,7 +491,7 @@ def RunMC(args):
 
         if(Sampler_Name != 'Hamiltonian' and
            (i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0):
-            MC.Cov = MC.GetCovMatrix()
+            MC.Cov = MC.GetCovMatrix()*1.5
             MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
 
             cov_file = Result_Loc +'Cov_I{}{}'.format(i_I,Key)
