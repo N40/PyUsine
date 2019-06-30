@@ -19,6 +19,11 @@ private:
         return v_pars_;
     }
 
+    std::vector<int> PyIndicesPars(int i){
+        // 0 : FREE , 1 : FIXED , 2 : NUISANCE
+        return GetFitPars()->IndicesPars( gENUM_FREEPARTYPE(i) );
+    }
+
 public:
     PyRunPropagation():TURunPropagation(){ };
 
@@ -77,10 +82,7 @@ public:
         return InitVals;
     }
 
-    std::vector<int> PyIndicesPars(int i){
-        // 0 : FREE , 1 : FIXED , 2 : NUISANCE
-        return GetFitPars()->IndicesPars( gENUM_FREEPARTYPE(i) );
-    }
+
 
 };
 
@@ -105,7 +107,7 @@ PYBIND11_MODULE(PyProp, m){
         .def("PyGetFreeParNames" , &PyRunPropagation::PyGetFreeParNames )
         .def("PyGetFixedParNames", &PyRunPropagation::PyGetFixedParNames)
         .def("PyGetInitVals", &PyRunPropagation::PyGetInitVals)
-        .def("PyIndicesPars", &PyRunPropagation::PyIndicesPars)
+        // .def("PyIndicesPars", &PyRunPropagation::PyIndicesPars)
         ;
 
     // m.def("Null", [](double a){return a; } , "a"_a=5.5);

@@ -49,28 +49,28 @@ class Storage_Container():
         return chi2
 
 # define a theano Op for our likelihood function
-class TheanWrapper(tt.Op):
-    '''
-    This function is no longer used.
-    It only serves for non-gradient based methods.
-    '''
-    itypes = [tt.dvector] # expects a vector of parameter values when called
-    otypes = [tt.dscalar] # outputs a single scalar value
-
-    def __init__(self, likefct):
-        """
-        loglike:
-            The log-likelihood (or whatever) function we've defined
-        """
-        # add inputs as class attributes
-        self.likelihood = likefct
-
-    def perform(self, node, inputs, outputs):
-        # the method that is used when calling the Op
-        theta, = inputs  # this will contain my variables
-        # call the log-likelihood function
-        ret_like = self.likelihood(theta, 1)
-        outputs[0][0] = np.array(ret_like) # output
+# class TheanWrapper(tt.Op):
+#     '''
+#     This function is no longer used.
+#     It only serves for non-gradient based methods.
+#     '''
+#     itypes = [tt.dvector] # expects a vector of parameter values when called
+#     otypes = [tt.dscalar] # outputs a single scalar value
+#
+#     def __init__(self, likefct):
+#         """
+#         loglike:
+#             The log-likelihood (or whatever) function we've defined
+#         """
+#         # add inputs as class attributes
+#         self.likelihood = likefct
+#
+#     def perform(self, node, inputs, outputs):
+#         # the method that is used when calling the Op
+#         theta, = inputs  # this will contain my variables
+#         # call the log-likelihood function
+#         ret_like = self.likelihood(theta, 1)
+#         outputs[0][0] = np.array(ret_like) # output
 
 class TheanWrapperGrad(tt.Op):
     """
@@ -95,7 +95,6 @@ class TheanWrapperGrad(tt.Op):
         theta, = inputs  # this will contain my variables
         # call the log-likelihood function
         ret_like = self.likelihood(theta, 1)
-        #print(ret_like)
         outputs[0][0] = np.array(ret_like) # output
 
     def grad(self, inputs, g ):
@@ -177,6 +176,7 @@ class Chi2Eval():
             self.S.Add(theta,chi2)
 
         result = (-0.5*chi2)
+
         if (bool(Option)):
             lf = open(self.log_file_name,'a+')
 
@@ -189,6 +189,7 @@ class Chi2Eval():
             lf.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
             lf.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
             lf.close()
+
         return result
 
 class MCU(Chi2Eval):
@@ -230,7 +231,6 @@ class MCU(Chi2Eval):
 
             self.Theta0.append(self.InitVals[i][0])
             self.STDs.append(self.InitVals[i][3])
-
 
         # SORTING OUT FIXED VARIABLES
         print (' >> Not regarding the following FIXED parameters:')
@@ -319,13 +319,16 @@ class MCU(Chi2Eval):
             """
             if Sampler_Name == "DEMetropolis":
                 step = pm.DEMetropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal )
+
             elif Sampler_Name == "Metropolis":
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True)
+
             elif Sampler_Name == "Hamiltonian":
                 # these settings for HMC are very tricky. allowing adapt_step_size=True may lead to extr. small step sizes causing the method to stuck.
                 length = max(0.3, 1.5*np.sqrt(np.sum(np.array(self.STDs)**2)))
                 sub_l  = length/7
-                step = pm.HamiltonianMC(adapt_step_size= 0, step_scale = sub_l, path_length = length, is_cov = True,  scaling = self.Cov[::-1,::-1] )#step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
+                step = pm.HamiltonianMC(adapt_step_size= 0, step_scale = sub_l, path_length = length, is_cov = True,  scaling = self.Cov[::-1,::-1] )
+                #step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
                 self.step = step  # debugging feature for HamiltonianMC
                 #print(self.step.adapt_step_size)
                 self.step.adapt_step_size = False
