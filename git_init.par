@@ -267,10 +267,10 @@ UsineFit  @ FreePars @ SrcPointLike     @ M=1 @ -
 ### MODEL AB
 
 
-UsineFit  @ FreePars @ Transport        @ M=1 @ delta:FIT,LIN,[0.1,0.9],5.3e-01,0.0138
-UsineFit  @ FreePars @ Transport        @ M=1 @ K0:FIT,LOG,[-2.5,-0.1],-1.2e+00,0.028
-UsineFit  @ FreePars @ Transport        @ M=1 @ Rlow:FIT,LIN,[2.0,10.0],+4.40848e+00,0.24
-UsineFit  @ FreePars @ Transport        @ M=1 @ deltalow:FIT,LIN,[0.005,5.0],+9.999831e-01,0.33
+UsineFit  @ FreePars @ Transport        @ M=1 @ delta:FIT,LIN,[0.1,0.9],5.2e-01,0.0138
+UsineFit  @ FreePars @ Transport        @ M=1 @ K0:FIT,LOG,[-2.5,-0.1],-1.15e+00,0.028
+UsineFit  @ FreePars @ Transport        @ M=1 @ Rlow:FIT,LIN,[2.0,10.0],+4.5+00,0.24
+UsineFit  @ FreePars @ Transport        @ M=1 @ deltalow:FIT,LIN,[0.005,5.0],+0.5,0.33
 # UsineFit  @ FreePars @ Transport        @ M=1 @ Va:   FIT,LIN,[5.,200],+5.448270e+01,10.0
 # UsineFit  @ FreePars @ Transport        @ M=1 @ Vc:   FIT,LIN,[0.01,70],5.,1.0
 

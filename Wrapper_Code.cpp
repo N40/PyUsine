@@ -70,7 +70,7 @@ public:
                 InitPar.push_back(GetFitPars()->GetParEntry(l)->GetFitInitMin());
                 InitPar.push_back(GetFitPars()->GetParEntry(l)->GetFitInitMax());
                 InitPar.push_back(GetFitPars()->GetParEntry(l)->GetFitInitSigma());
-                InitPar.push_back(GetFitPars()->GetParEntry(l)->GetFitSampling());
+                // InitPar.push_back(GetFitPars()->GetParEntry(l)->GetFitSampling());
                 InitVals.push_back(InitPar);
             }
         }
@@ -91,8 +91,8 @@ PYBIND11_MODULE(PyProp, m){
     // Interface of the original Usine-Class
     class_<TURunPropagation>(m, "TURunPropagation")
         .def(init<>(), "Initializer, not doing anything")
-        .def("SetOutputDir", &TURunPropagation::SetOutputDir)
-        .def("GetOutputDir", &TURunPropagation::GetOutputDir)
+        // .def("SetOutputDir", &TURunPropagation::SetOutputDir)
+        // .def("GetOutputDir", &TURunPropagation::GetOutputDir)
     // Double_t TURunPropagation::Chi2_TOAFluxes(const Double_t *pars)
         ;
 
@@ -108,7 +108,7 @@ PYBIND11_MODULE(PyProp, m){
         .def("PyIndicesPars", &PyRunPropagation::PyIndicesPars)
         ;
 
-    m.def("Null", [](double a){return a; } , "a"_a=5.5);
+    // m.def("Null", [](double a){return a; } , "a"_a=5.5);
 
     }
 }

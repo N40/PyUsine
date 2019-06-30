@@ -144,7 +144,7 @@ class Chi2Eval():
         self.step = None  # introduced for debugging reasons concerning HamiltonianMC
 
     def Chi2(self, theta, Option = 1):
-        return self.HalfNegChi2(theta, Option)
+        return self.HalfNegChi2(theta, Option)*(-2.0)
 
     def HalfNegChi2(self, theta, Option = 1):
         '''
@@ -230,14 +230,18 @@ class MCU(Chi2Eval):
 
             self.Theta0.append(self.InitVals[i][0])
             self.STDs.append(self.InitVals[i][3])
-            if bool(self.InitVals[i][4]):  #This position is the bool output of IsLogSampling
-                # self.VarNames[i] = "LOG10_" + self.VarNames[i] # maybe nomore necessary
-                pass
+
 
         # SORTING OUT FIXED VARIABLES
         print (' >> Not regarding the following FIXED parameters:')
         for name in self.FixedVarNames:
             print('{:25}'.format(name))
+
+        # INIT PARAMETERS USED
+        print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
+        for name, vals in zip(self.VarNames, self.InitVals):
+            print('{:25}  [{:6.3f},   {:6.3f} +- {:6.3f}   ,{:6.3f}]'.format(name[:22], vals[1], vals[0], vals[3], vals[2]))
+        print(' ')
 
     def Gen_Start_Points(self, sigma = 0.1):
         start_points = []
@@ -270,11 +274,10 @@ class MCU(Chi2Eval):
         with self.basic_model:
             ProScale = 1. # Scale for the sampling normal
 
-            # Setting up the Priors (this is not the sampling probability)
+            # Setting up the Parameters for MCMC to use (no priors here!)
             Priors = []
             print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
             for name, vals in zip(self.VarNames, self.InitVals):
-                print('{:25}  [{:10.3f}, {:15.3f} +- {:10.3f} ,{:10.3f}]'.format(name, vals[1], vals[0], vals[3], vals[2]))
                 #P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.0)
                 P = pm.Uniform(name, lower=vals[1], upper=vals[2])
                 Priors.append(P)
