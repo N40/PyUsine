@@ -358,18 +358,20 @@ class MCU(Chi2Eval):
             if self.Prev_End:
                 self.start = self.Prev_End
                 print(" >> Continouing previous trace from results")
-            elif self.Custom_sample_args['chains'] > 1 or self.Departure_Deviation :
+
+            else:
                 try: DD = self.Departure_Deviation
-                except: DD = 0.2
+                except AttributeError: DD = 0.0
+
+                #if self.Custom_sample_args['chains'] > 1:
+                #    DD = min(DD,0.2)
                 self.t0 = time()
                 trace = None
                 self.start = self.Gen_Start_Points(DD)
-                print(" >> Using departure points for sampled each chain around given starting parameters with {} sigma".format(DD))
-            else:
-                self.t0 = time()
-                self.start = self.Gen_Start_Points(0.0)
-                trace = None
-                print(" >> Using departure points from USINE input file")
+                if DD >0.0:
+                    print(" >> Using departure points for sampled each chain around given starting parameters with {} sigma".format(DD))
+                else:
+                    print(" >> Using exact departure points from USINE input file")
 
 
         print(" >> Sampling {} elememnts".format(N_run))
