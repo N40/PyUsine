@@ -371,7 +371,7 @@ class MCU(Chi2Eval):
                 print(" >> Using departure points from USINE input file")
 
 
-        print(" >> Starting sampler")
+        print(" >> Sampling {} elememnts".format(N_run))
         with self.basic_model:
             trace = pm.sample(N_run,
                 trace = trace,
@@ -505,7 +505,7 @@ def RunMC(args):
                 MC.Cov = New_Cov*1.5
                 print(' >> Updating Covariance Matrix from present Results, Saving in {}'.format(cov_file))
 
-            except numpy.linalg.LinAlgError:
+            except np.linalg.LinAlgError:
                 print(' >> Covariance Matrix is not positive definite; Updating diagnonal only')
                 MC.Cov = np.diag(np.diag(New_Cov)) *1.5   # killing off-diagnonal elements
 
