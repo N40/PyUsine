@@ -275,7 +275,7 @@ class MCU(Chi2Eval):
         with self.basic_model:
             # Setting up the Parameters for MCMC to use (no priors here!)
             Priors = []
-            print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
+            print (' >> Setting up PyMC3 with the {} free parameters and flat priors'.format(len(self.VarNames)))
             for name, vals in zip(self.VarNames, self.InitVals):
                 #P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.0)
                 P = pm.Uniform(name, lower=vals[1], upper=vals[2])
