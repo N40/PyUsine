@@ -510,8 +510,11 @@ def RunMC(args):
                 print(' >> Updating Covariance Matrix from present Results, Saving in {}'.format(cov_file))
 
             except np.linalg.LinAlgError:
-                print(' >> Covariance Matrix is not positive definite; Updating diagnonal only')
-                MC.Cov = np.diag(np.diag(New_Cov)) *1.5   # killing off-diagnonal elements
+                if np.prod(np.diag(New_Cov)) > 0.0
+                    print(' >> Covariance Matrix is not positive definite; Updating diagnonal only')
+                    MC.Cov = np.abs(np.diag(np.diag(New_Cov)) *1.5)   # killing off-diagnonal elements
+                else:
+                    print(' >> No update of Covariance Matrix due to zero-value in diagonal!')
 
             MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
             np.savetxt(cov_file, New_Cov, delimiter = ', ', header = ',  '.join(MC.VarNames))
