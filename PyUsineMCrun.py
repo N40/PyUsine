@@ -510,7 +510,7 @@ def RunMC(args):
                 print(' >> Updating Covariance Matrix from present Results, Saving in {}'.format(cov_file))
 
             except np.linalg.LinAlgError:
-                if np.prod(np.diag(New_Cov)) > 0.0
+                if np.prod(np.diag(New_Cov)) > 0.0:
                     print(' >> Covariance Matrix is not positive definite; Updating diagnonal only')
                     MC.Cov = np.abs(np.diag(np.diag(New_Cov)) *1.5)   # killing off-diagnonal elements
                 else:
