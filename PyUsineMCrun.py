@@ -18,16 +18,19 @@ import os
 
 class Storage_Container():
     '''
-    Storage in order to prevent from unnessesary Chi2 calculations
-    by re-using allready calculated values.
-    Most recenly used parameters are beeing kept while not regarded are beeing eliminated
-    when new ones are saved
+    Cache designed to prevent unnessesary Chi2 calculations by re-using
+    allready calculated values. For each new value, the least recently
+    called one is overwritten.
     '''
     A_Chi2 = []
     A_theta = []
     n_ = -1
 
     def __init__(self, n_ =5):
+        '''
+        n_ :
+            size of the cache
+        '''
         self.n_ = n_
         self.A_Chi2 = [0 for i in range(n_)]
         self.A_theta = [[] for i in range(n_)]
@@ -48,33 +51,10 @@ class Storage_Container():
             chi2 = False
         return chi2
 
-# define a theano Op for our likelihood function
-# class TheanWrapper(tt.Op):
-#     '''
-#     This function is no longer used.
-#     It only serves for non-gradient based methods.
-#     '''
-#     itypes = [tt.dvector] # expects a vector of parameter values when called
-#     otypes = [tt.dscalar] # outputs a single scalar value
-#
-#     def __init__(self, likefct):
-#         """
-#         loglike:
-#             The log-likelihood (or whatever) function we've defined
-#         """
-#         # add inputs as class attributes
-#         self.likelihood = likefct
-#
-#     def perform(self, node, inputs, outputs):
-#         # the method that is used when calling the Op
-#         theta, = inputs  # this will contain my variables
-#         # call the log-likelihood function
-#         ret_like = self.likelihood(theta, 1)
-#         outputs[0][0] = np.array(ret_like) # output
-
 class TheanWrapperGrad(tt.Op):
     """
     A generic Class, necessary in order to call custom log-probability function
+    (blame the internal PyMC3 design for this!)
     """
     itypes = [tt.dvector] # expects a vector of parameter values when called
     otypes = [tt.dscalar] # outputs a single scalar value
@@ -84,21 +64,20 @@ class TheanWrapperGrad(tt.Op):
         loglike:
             The log-likelihood (or whatever) function we've defined
         """
-        # add inputs as class attributes
         self.likelihood = likefct
 
         # initialise the gradient Op (below)
         self.logpgrad = LogLikeGrad(self.likelihood, STDs)
 
     def perform(self, node, inputs, outputs):
-        # the method that is used when calling the Op
-        theta, = inputs  # this will contain my variables
-        # call the log-likelihood function
+        # the method that is used when calling for a Chi2 value
+        theta, = inputs
         ret_like = self.likelihood(theta, 1)
-        outputs[0][0] = np.array(ret_like) # output
+        outputs[0][0] = np.array(ret_like)
 
     def grad(self, inputs, g ):
-        # the method that is automaticaly searched for when using NUTS or HMC
+        # This is executed if the gradient of the log-likelihood function is needed
+        # it is automaticaly searched for when using NUTS or HMC; not needed for Metropolis
         theta, = inputs
         return [g[0]*self.logpgrad(theta)]
 
@@ -111,13 +90,11 @@ class LogLikeGrad(tt.Op):
     otypes = [tt.dvector]
 
     def __init__(self, loglike, STDs = None):
-        """
-        loglike:
-            The log-likelihood (or whatever) function we've defined
-        """
-        # add inputs as class attributes
         self.likelihood = loglike
+        # Vector of the uncertainties
         self.STDs = STDs
+        # This defines, whether or not to write the gradient calculations in the log-file
+        # often overwritten externaly
         self.GradVerbose = 0
 
     def perform(self, node, inputs, outputs):
@@ -125,14 +102,14 @@ class LogLikeGrad(tt.Op):
         if not np.array(self.STDs).any():
             print('\n >> no deviations found, setting to 10\% ')
             self.STDs = 0.1*np.abs(theta)
-        # calculate gradients
-        grads = scipy.optimize.approx_fprime(theta, self.likelihood, self.STDs*0.05, self.GradVerbose) # arguments other than theta on last position
+        # calculation of gradients using steps in each direction (5% of init. uncertainty)
+        # arguments other than theta on position 3 and beyond
+        grads = scipy.optimize.approx_fprime(theta, self.likelihood, self.STDs*0.05, self.GradVerbose)
         outputs[0][0] = grads
 
 class Chi2Eval():
     """
     Class in order to mediate the execution and documentation of the Chi2 function calls
-    Could be merged into the MCU class in future
     """
     def __init__(self):
         self.run = PP.PyRunPropagation()
@@ -147,45 +124,44 @@ class Chi2Eval():
 
     def HalfNegChi2(self, theta, Option = 1):
         '''
+        This function returns -0.5 Chi^2(theta), the logarithm of the (gaussian) posterior probability
+
         Option:
             1 : Normal function call
-            0 : Call, without logging
-            2 : Used for gradient calculation
-            3 : Usde for gradient calculation, ignoring boundaries
+            0 : Do not write to log-file
+            2 : Normal function call (meant for gradient calculation)
+            3 : No penalty for out-of-bound parameters (meant for gradient calculation)
+        theta:
+            list or array of parameters to probe
         '''
         theta = list(theta)
         chi2 = 0
         InBoundary = True
-        Flag = str(int(Option))
+        Flag = str(int(Option)) # This indicates in the log file the type of Chi2 call
 
         for par,val in zip(theta, self.InitVals):
+            # The bounds, defined in the init file, are in position 1,2 (lower,upper) for each parameter
             if ((val[1] > par or par > val[2]) and Option != 3):
                 chi2 = 2.0e20
                 InBoundary = False
+                Flag = "*"+Flag
+                break
 
-        if InBoundary == False:
-            Flag = "*"+Flag
-
+        # Checking if parameter was recently called to avoid USINE
         stock = self.S.Check(theta)
         if (stock):
             Flag += "X"
             chi2 = stock
         elif InBoundary:
             Flag += " "
-            chi2 = self.run.PyChi2(theta)
-            self.S.Add(theta,chi2)
+            chi2 = self.run.PyChi2(theta) # Calculate the Chi2 with USINE
+            self.S.Add(theta,chi2)        # Cach resent Chi2 call
 
         result = (-0.5*chi2)
 
+        # Writing the Time, Chi2, Flag and theta to the log-file
         if (bool(Option)):
             lf = open(self.log_file_name,'a+')
-
-            # HamiltonianMC debugging by displaying the present step size
-            try:
-                lf.write(' {:12}'.format(round(self.step.step_size,6)))
-                #lf.write(' {:6} '.format((self.step.adapt_step_size)))
-            except: pass
-
             lf.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
             lf.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
             lf.close()
@@ -203,47 +179,51 @@ class MCU(Chi2Eval):
 
     def InitPar(self, ParFile, log_file_name = None, Theta0 = None):
         """
-        Loading Usine Configuration and setting all intern parameters
-        correspondingly
+        Loading Usine Configuration and setting all intern parameters correspondingly
+        ParFile         : USINE init file
+        log_file_name   : log file for the Chi2 calls
+        Theta0          : Starting point or point to sample around the starting points
         """
         now = datetime.datetime.now()
         if log_file_name:
             self.log_file_name = log_file_name
         else:
             self.log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
-        print (' >> Saving futher Calculations in {}'.format(self.log_file_name))
+        print (' >> Saving Chi2 calculations in {}'.format(self.log_file_name))
         open(self.log_file_name,'w+').close() # wiping the logfile
 
         self.ParFile = ParFile
-        print (' >> Loading configuration from {}'.format(self.ParFile))
+        print (' >> Loading USINE configuration and parameters from {}'.format(self.ParFile))
 
         self.run.PySetLogFile("run.log") # this is the USINE log file, not the MCMC one
-        self.run.PySetClass(self.ParFile, 1, "OUT")
+        self.run.PySetClass(self.ParFile, 1, "OUT") # "OUT" is a dummy location without use, needed for USINE
 
-        self.InitVals = self.run.PyGetInitVals()
-        self.VarNames = self.run.PyGetFreeParNames()
+        self.InitVals = self.run.PyGetInitVals()            # Parameter-wise list of [start, low_bound, up_bound, std]
+        self.VarNames = self.run.PyGetFreeParNames()        #
         self.FixedVarNames = self.run.PyGetFixedParNames()
-        self.Theta0 = []
-        self.STDs = []
+        self.Theta0 = []    # Initial parameters
+        self.STDs = []      # Initial uncertainties
         for i in range(len(self.VarNames)):
-            if Theta0:
-                self.InitVals[i][0] = Theta0[i]
+            if Theta0: self.InitVals[i][0] = Theta0[i]
 
             self.Theta0.append(self.InitVals[i][0])
             self.STDs.append(self.InitVals[i][3])
 
-        # SORTING OUT FIXED VARIABLES
         print (' >> Not regarding the following FIXED parameters:')
         for name in self.FixedVarNames:
             print('{:25}'.format(name))
 
-        # INIT PARAMETERS USED
         print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
         for name, vals in zip(self.VarNames, self.InitVals):
             print('{:25}  [{:6.3f},   {:6.3f} +- {:6.3f}   ,{:6.3f}]'.format(name[:22], vals[1], vals[0], vals[3], vals[2]))
-        print(' ')
+
 
     def Gen_Start_Points(self, sigma = 0.1):
+        '''
+        Calculate a dictionary of points of departure, sampled with respect to Theta0
+        sigma :
+            Sampling scale for the points (relative to init. uncertainties)
+        '''
         start_points = []
         for i_C in range(self.Custom_sample_args['chains']):
             start = dict()
@@ -256,17 +236,25 @@ class MCU(Chi2Eval):
         return start_points
 
     def SetCovMatrix(self, **kwargs):
+        '''
+        Setting covariance matrix of the parameters
+            Cov     : file location of a comma-separated covariance matrix
+            Scale   : The fraction of init. uncertainties to use for a diagonal matrix
+        '''
         try:
             self.Cov = np.loadtxt(kwargs["Cov"] , delimiter = ',' )
             print(" >> Valid Covariance matrix {} found".format(kwargs["Cov"]))
         except:
-            Scale = kwargs.get("Scale",0.5)
+            Scale = kwargs.get("Scale", 1.0)
             print(" >> No valid Covariance matric found",
                   "\n >> creating diagnonal one with scale {}".format(Scale))
             self.Cov = np.diag([(Scale*var[3])**2 for var in self.InitVals])
 
 
     def InitPyMC(self):
+        '''
+        PyMC3 initialisation: Parameters, Log-Likelihood function
+        '''
         self.basic_model = pm.Model()
         # Setting the extern blackbox function
         ext_fct = TheanWrapperGrad(self.HalfNegChi2, np.array(self.STDs))
@@ -282,12 +270,18 @@ class MCU(Chi2Eval):
                 Priors.append(P)
 
             theta = tt.as_tensor_variable(Priors)
-
             # Likelihood (sampling distribution) of observations. Specified as log_like
             likelihood = pm.DensityDist('likelihood',  lambda v: ext_fct(v), observed={'v': theta})
 
     def InitPyMCSampling(self, **kwargs):
-        '...'
+        '''
+        PyMC3 initialisation: Sampler
+            N_tune :
+            N_chains :
+            N_cores :
+            IsProgressbar :
+            Sampler_Name :
+        '''
         #Checking if all the necessary stuff is loaded
         if not self.VarNames:
             self.InitPar(kwargs["ParFile"])
@@ -296,23 +290,22 @@ class MCU(Chi2Eval):
         if not self.basic_model:
             self.InitPyMC()
 
-        # RUNNING PYMC3
+        # Further initialisation
         print(' >> Logging calculation steps in {}'.format(self.log_file_name) )
         open(self.log_file_name,'w+').close()
         with self.basic_model:
-            Sampler_Name = kwargs.get("Sampler_Name","Metropolis")
-            #N_run  = kwargs.get("N_run" , 500)
-            N_tune = kwargs.get("N_tune" , 0)
-            N_chains = kwargs.get("N_chains" , 1)
-            N_cores = kwargs.get("N_cores" , min(4,N_chains))
-            IsProgressbar = kwargs.get("IsProgressbar" , 1)
+            Sampler_Name    = kwargs.get("Sampler_Name","Metropolis")
+            N_tune          = kwargs.get("N_tune" , 0)
+            N_chains        = kwargs.get("N_chains" , 1)
+            N_cores         = kwargs.get("N_cores" , min(4,N_chains) )
+            IsProgressbar   = kwargs.get("IsProgressbar" , 1)
             print ('\n >> using configuration :  {:12}, N_tune = {}, N_chains = {}, N_cores = {}'.format(Sampler_Name,N_tune,N_chains,N_cores))
 
-            self.S = Storage_Container(2*N_chains*len(self.VarNames))
-            """
-            calling S = self.Cov[::-1,::-1] is a neccessary hack in order to avoid a problem in the PyMC3 code
-            the order of the variables is inverted (by accident?) durint the BlockStep().__init__()
-            """
+            self.S = Storage_Container(3*N_chains*len(self.VarNames)) # updating the cach size
+
+            # Setting up the samplers
+            #   Calling S = self.Cov[::-1,::-1] is a neccessary hack in order to avoid a problem in the PyMC3 code:
+            #   The order of the variables is inverted (by accident?) durint the BlockStep().__init__() (see terminal promts)
             if Sampler_Name == "DEMetropolis":
                 step = pm.DEMetropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal )
 
@@ -320,15 +313,14 @@ class MCU(Chi2Eval):
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True)
 
             elif Sampler_Name == "Hamiltonian":
-                # these settings for HMC are very tricky. allowing adapt_step_size=True may lead to extr. small step sizes causing the method to stuck.
-                length = max(0.3, 1.5*np.sqrt(np.sum(np.array(self.STDs)**2)))
-                sub_l  = length/7
-                step = pm.HamiltonianMC(adapt_step_size= 0, step_scale = sub_l, path_length = length, is_cov = True,  scaling = self.Cov[::-1,::-1] )
-                #step_scale = 0.01, path_length = 0.1, target_accept = 0.85)
-                self.step = step  # debugging feature for HamiltonianMC
-                #print(self.step.adapt_step_size)
-                self.step.adapt_step_size = False
-                print(' >> Hamiltonian settings: {:7.4f} / {:7.4f}  = {:4}'.format(length, sub_l/(len(self.STDs)**0.25), int(length / (sub_l/(len(self.STDs)**0.25)) )))
+                # the settings for HMC are very tricky. allowing adapt_step_size=True may lead to very small step sizes causing the method to stuck.
+                length = max(0.3, 1.5*np.sqrt(np.sum(np.array(self.STDs)**2)))  # this is the length in the parameter-space to travel between two points
+                sub_l  = length/7                                               # setting substeps
+                step = pm.HamiltonianMC(scaling = self.Cov[::-1,::-1], adapt_step_size= 0, step_scale = sub_l, path_length = length, is_cov = True )
+
+                self.step.adapt_step_size = False   # workaround for PyMC3 bug ( 'adapt_step_size= 0' is ignored)
+
+                print(' >> Hamiltonian settings: {:7.4f} / {:7.4f}  = {:4} substeps between points'.format(length, sub_l/(len(self.STDs)**0.25), int(length / (sub_l/(len(self.STDs)**0.25)) )))
 
             else:
                 print(' >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
@@ -348,6 +340,10 @@ class MCU(Chi2Eval):
 
 
     def Sample(self, N_run = 50):
+        '''
+        Running the MCMC Sampling
+            N_run : Number of Points to sample (The true numer of Chi2 calls is higher, depending on sampler)
+        '''
         # Check for starting points
         try:
             trace = self.trace
@@ -355,6 +351,8 @@ class MCU(Chi2Eval):
             self.Custom_sample_args['tune'] = 0
             print(" >> Continouing previous trace")
         except:
+            self.t0 = time()
+
             if self.Prev_End:
                 self.start = self.Prev_End
                 print(" >> Continouing previous trace from results")
@@ -363,9 +361,6 @@ class MCU(Chi2Eval):
                 try: DD = self.Departure_Deviation
                 except AttributeError: DD = 0.0
 
-                #if self.Custom_sample_args['chains'] > 1:
-                #    DD = min(DD,0.2)
-                self.t0 = time()
                 trace = None
                 self.start = self.Gen_Start_Points(DD)
                 if DD >0.0:
@@ -376,12 +371,14 @@ class MCU(Chi2Eval):
 
         print(" >> Sampling {} elememnts".format(N_run))
         with self.basic_model:
+            # This is the actual MCMC run
             trace = pm.sample(N_run,
                 trace = trace,
                 start = self.start,
                 **self.Custom_sample_args,
                 )
 
+            # No more tuning after first iteration
             self.Custom_sample_args['tune'] = 0
 
         post_data = np.array([
@@ -392,10 +389,10 @@ class MCU(Chi2Eval):
         return post_data
 
     def SaveResults(self, **kwargs):
-        time_stamp = datetime.datetime.now().strftime("%d.%m.%Y_%H:%M")
-        Result_Key = kwargs.get("Result_Key", time_stamp)
+        Result_Key = kwargs.get("Result_Key", '')
         Result_Loc = kwargs.get("Result_Loc", '')
 
+        # Saving the Chains independantly or accumulated
         Combined = kwargs.get("Combined", False)
         if Combined == False:
             for i_c in range(self.Custom_sample_args['chains']):
