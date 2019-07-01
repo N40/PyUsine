@@ -268,12 +268,11 @@ class MCU(Chi2Eval):
 
     def InitPyMC(self):
         self.basic_model = pm.Model()
+        # Setting the extern blackbox function
         ext_fct = TheanWrapperGrad(self.HalfNegChi2, np.array(self.STDs))
-        ext_fct.logpgrad.GradVerbose = 2
+        ext_fct.logpgrad.GradVerbose = 2  # =2: gradient calculation steps are shown in logfile
 
         with self.basic_model:
-            ProScale = 1. # Scale for the sampling normal
-
             # Setting up the Parameters for MCMC to use (no priors here!)
             Priors = []
             print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
@@ -281,13 +280,10 @@ class MCU(Chi2Eval):
                 #P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.0)
                 P = pm.Uniform(name, lower=vals[1], upper=vals[2])
                 Priors.append(P)
-                # not sure about this, but
-                # using symmetric priors vanishes their influence
-                # this secion is only to be taken care of, if the priors are die be different than guassian shape
 
             theta = tt.as_tensor_variable(Priors)
 
-            # Likelihood (sampling distribution) of observations
+            # Likelihood (sampling distribution) of observations. Specified as log_like
             likelihood = pm.DensityDist('likelihood',  lambda v: ext_fct(v), observed={'v': theta})
 
     def InitPyMCSampling(self, **kwargs):
@@ -352,6 +348,7 @@ class MCU(Chi2Eval):
 
 
     def Sample(self, N_run = 50):
+        # Check for starting points
         try:
             trace = self.trace
             self.start = [trace.point(-1,i_C) for i_C in range(self.Custom_sample_args['chains'])]
@@ -367,9 +364,12 @@ class MCU(Chi2Eval):
                 self.start = self.Gen_Start_Points()
                 print(" >> Using departure points for sampled each chain around given starting parameters")
             else:
+                # Default case: none given, only one chain; taking starting position from init-file
                 self.t0 = time()
                 self.start = self.Gen_Start_Points(0.0)
                 trace = None
+                print(" >> Using departure points from USINE input file")
+
 
         print(" >> Starting sampler")
         with self.basic_model:
@@ -495,14 +495,24 @@ def RunMC(args):
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
 
 
-        if(Sampler_Name != 'Hamiltonian' and
-           (i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0):
-            MC.Cov = MC.GetCovMatrix()*1.5
-            MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
-
+        if(Sampler_Name != 'Hamiltonian' and (i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0):
+            New_Cov = MC.GetCovMatrix()*1.5
             cov_file = Result_Loc +'Cov_I{}{}'.format(i_I,Key)
-            print(' >> Updating Covariance Matrix from present Results, Saving in {}'.format(cov_file))
-            np.savetxt(cov_file, MC.Cov, delimiter = ', ', header = ',  '.join(MC.VarNames))
+
+            try:
+                # Check Cov-Matrix if positive definite
+                np.linalg.cholesky(New_Cov)
+                MC.Cov = New_Cov*1.5
+                print(' >> Updating Covariance Matrix from present Results, Saving in {}'.format(cov_file))
+
+            except numpy.linalg.LinAlgError:
+                print(' >> Covariance Matrix is not positive definite; Updating diagnonal only')
+                MC.Cov = np.diag(np.diag(New_Cov)) *1.5   # killing off-diagnonal elements
+
+            MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
+            np.savetxt(cov_file, New_Cov, delimiter = ', ', header = ',  '.join(MC.VarNames))
+
+
 
 
 if __name__ == "__main__":
