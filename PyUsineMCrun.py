@@ -358,13 +358,14 @@ class MCU(Chi2Eval):
             if self.Prev_End:
                 self.start = self.Prev_End
                 print(" >> Continouing previous trace from results")
-            elif self.Custom_sample_args['chains'] > 1:
+            elif self.Custom_sample_args['chains'] > 1 or self.Departure_Deviation :
+                try: DD = self.Departure_Deviation
+                except: DD = 0.2
                 self.t0 = time()
                 trace = None
-                self.start = self.Gen_Start_Points()
-                print(" >> Using departure points for sampled each chain around given starting parameters")
+                self.start = self.Gen_Start_Points(DD)
+                print(" >> Using departure points for sampled each chain around given starting parameters with {} sigma".format(DD))
             else:
-                # Default case: none given, only one chain; taking starting position from init-file
                 self.t0 = time()
                 self.start = self.Gen_Start_Points(0.0)
                 trace = None
@@ -445,14 +446,16 @@ def RunMC(args):
         Theta0 = list(eval(Theta0))
         print (Theta0)
 
-    try:
-        os.mkdir(Result_Loc)
-    except:
-        pass
+    try:    os.mkdir(Result_Loc)
+    except: pass
 
     MC = MCU()
     MC.InitPar(ParFile, log_file_name, Theta0)
     MC.InitPyMC()
+
+    if args['D']:
+        if float(args['D']) > 0.0:
+            MC.Departure_Deviation = float(args['D'])
 
     L_I = args['L']
     if L_I >= 0:
@@ -527,6 +530,8 @@ if __name__ == "__main__":
     parser.add_argument('-V', type=int, default=1, help='Verbose progressbar')
     parser.add_argument('-S', type=str, default='DEMetropolis', help='Sampler Name')
     parser.add_argument('-T', nargs = 2, help='Theta0: File, line number')
+    parser.add_argument('-D', type=float, nargs = 1, help='sigma radius to sample starting points around Theta0')
+
     parser.add_argument('-L', type=int, default = -1, help='Last iteration index to load files from')
     parser.add_argument('-U', type=int, default=-1 , help='number of Iterations after which the Cov Matrix is to be updated')
 
