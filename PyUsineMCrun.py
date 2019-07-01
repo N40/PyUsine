@@ -453,9 +453,8 @@ def RunMC(args):
     MC.InitPar(ParFile, log_file_name, Theta0)
     MC.InitPyMC()
 
-    if args['D']:
-        if float(args['D']) > 0.0:
-            MC.Departure_Deviation = float(args['D'])
+    if float(args['D']) > 0.0:
+        MC.Departure_Deviation = float(args['D'])
 
     L_I = args['L']
     if L_I >= 0:
@@ -530,7 +529,7 @@ if __name__ == "__main__":
     parser.add_argument('-V', type=int, default=1, help='Verbose progressbar')
     parser.add_argument('-S', type=str, default='DEMetropolis', help='Sampler Name')
     parser.add_argument('-T', nargs = 2, help='Theta0: File, line number')
-    parser.add_argument('-D', type=float, nargs = 1, help='sigma radius to sample starting points around Theta0')
+    parser.add_argument('-D', type=float, default=0.0 help='sigma radius to sample starting points around Theta0')
 
     parser.add_argument('-L', type=int, default = -1, help='Last iteration index to load files from')
     parser.add_argument('-U', type=int, default=-1 , help='number of Iterations after which the Cov Matrix is to be updated')
