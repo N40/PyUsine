@@ -315,6 +315,7 @@ class MCU(Chi2Eval):
             elif Sampler_Name == "Hamiltonian":
                 # the settings for HMC are very tricky. allowing adapt_step_size=True may lead to very small step sizes causing the method to stuck.
                 length = max(0.3, 1.5*np.sqrt(np.sum(np.array(self.STDs)**2)))  # this is the length in the parameter-space to travel between two points
+                #length = np.sqrt(self.STDs) * np.mean(self.STDs)
                 sub_l  = length/7                                               # setting substeps
                 step = pm.HamiltonianMC(scaling = self.Cov[::-1,::-1], adapt_step_size= 0, step_scale = sub_l, path_length = length, is_cov = True )
 
