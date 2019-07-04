@@ -456,7 +456,7 @@ def RunMC(args):
 
     MC = MCU()
     MC.InitPar(ParFile, log_file_name, Theta0)
-    MC.InitPyMC()
+    MC.InitPyMCBasic()
 
     if float(args['D']) > 0.0:
         MC.Departure_Deviation = float(args['D'])
