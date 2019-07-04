@@ -297,8 +297,6 @@ class MCU(PyUsine):
 
 
         # Further initialisation
-        # print(' >> Logging calculation steps in {}'.format(self.log_file_name) )
-        # open(self.log_file_name,'w+').close()
         with self.basic_model:
             Sampler_Name    = kwargs.get("Sampler_Name","Metropolis")
             N_tune          = kwargs.get("N_tune" , 0)
@@ -421,7 +419,7 @@ class MCU(PyUsine):
         return np.cov(post_data.T)
 
 def RunMC(args):
-    now = datetime.datetime.now()
+    # now = datetime.datetime.now()
     log_file_name = "logger" # + '_' + datetime.datetime.now().strftime("%H_%M_%S")
 
     ParFile = args['P']
@@ -451,7 +449,7 @@ def RunMC(args):
         line_no  = int(args['T'][1])
         Theta0 = open(file).readlines()[line_no][:-1]
         Theta0 = list(eval(Theta0))
-        print (Theta0)
+        print (' >> Using custom Theta0: ', Theta0)
 
     try:    os.mkdir(Result_Loc)
     except: pass
@@ -492,6 +490,7 @@ def RunMC(args):
         Sampler_Name = Sampler_Name,
     )
 
+    # Main Loop over iterations
     for i_I in range(L_I+1, N_I + L_I+1):
         print('\n >> Starging interation {}'.format(i_I))
 
@@ -502,9 +501,11 @@ def RunMC(args):
 
         data = MC.Sample(N_run)
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
+        MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "F", Combined = True)
 
 
-        if(Sampler_Name != 'Hamiltonian' and (i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0):
+        # Covariance matrix update (optional)
+        if( (i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0 ):
             New_Cov = MC.GetCovMatrix()*1.5
             cov_file = Result_Loc +'Cov_I{}{}'.format(i_I,Key)
 
@@ -521,9 +522,10 @@ def RunMC(args):
                 else:
                     print(' >> No update of Covariance Matrix due to zero-value in diagonal!')
 
-            MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
             np.savetxt(cov_file, New_Cov, delimiter = ', ', header = ',  '.join(MC.VarNames))
 
+            if (Sampler_Name != 'Hamiltonian'):
+                MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
 
 
 
