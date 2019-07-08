@@ -7,8 +7,6 @@ from pymc3 import  *
 import theano
 import theano.tensor as tt
 
-import PyProp as PP
-
 from time import time
 import sys
 import datetime
@@ -16,40 +14,7 @@ import datetime
 import argparse
 import os
 
-class Storage_Container():
-    '''
-    Cache designed to prevent unnessesary Chi2 calculations by re-using
-    allready calculated values. For each new value, the least recently
-    called one is overwritten.
-    '''
-    A_Chi2 = []
-    A_theta = []
-    n_ = -1
-
-    def __init__(self, n_ =5):
-        '''
-        n_ :
-            size of the cache
-        '''
-        self.n_ = n_
-        self.A_Chi2 = [0 for i in range(n_)]
-        self.A_theta = [[] for i in range(n_)]
-
-    def Add(self, theta, Chi2, i = 0):
-        self.A_Chi2.pop(i)
-        self.A_theta.pop(i)
-        self.A_Chi2.append(Chi2)
-        self.A_theta.append(theta)
-
-    def Check(self,theta):
-        chi2 = 0
-        try:
-            i = self.A_theta.index(theta)
-            chi2 = self.A_Chi2[i]
-            self.Add(theta, chi2, i)
-        except ValueError:
-            chi2 = False
-        return chi2
+from PyUsine import PyUsine
 
 class TheanWrapperGrad(tt.Op):
     """
@@ -107,125 +72,7 @@ class LogLikeGrad(tt.Op):
         grads = scipy.optimize.approx_fprime(theta, self.likelihood, self.STDs*0.05, self.GradVerbose)
         outputs[0][0] = grads
 
-class PyUsine():
-    """
-    Class in order to mediate the execution and documentation of the Chi2 function calls
-    """
-    def __init__(self, ParFile = None):
-        self.PRP = PP.PyRunPropagation()
-        self.t0 = time()
-        self.log_file_name = 'logger'
-        self.S = Storage_Container(5)
-        self.Cov = None
 
-        if ParFile:
-            self.InitPar(ParFile)
-
-
-    def InitPar(self, ParFile, log_file_name = None, Theta0 = None):
-        """
-        Loading Usine Configuration and setting all intern parameters correspondingly
-        ParFile         : USINE init file
-        log_file_name   : log file for the Chi2 calls
-        Theta0          : Starting point or point to sample around the starting points
-        """
-
-        if log_file_name:
-            self.log_file_name = log_file_name
-        print (" >> Saving Chi2 calculations in '{}' ".format(self.log_file_name))
-        open(self.log_file_name,'w+').close() # wiping the logfile
-
-        self.ParFile = ParFile
-        print (" >> Loading USINE configuration and parameters from '{}' ".format(self.ParFile))
-
-        self.PRP.PySetLogFile("run.log") # this is the USINE log file, not the MCMC one
-        self.PRP.PySetClass(self.ParFile, 1, "OUT") # "OUT" is a dummy location without use, needed for USINE
-
-        self.InitVals = self.PRP.PyGetInitVals()            # Parameter-wise list of [start, low_bound, up_bound, std]
-        self.VarNames = self.PRP.PyGetFreeParNames()        #
-        self.FixedVarNames = self.PRP.PyGetFixedParNames()
-
-        if Theta0:
-            for i in range(len(self.VarNames)):
-                self.InitVals[i][0] = Theta0[i]
-
-        self.Theta0 = [ V[0]           for V in self.InitVals]    # Initial parameters
-        self.STDs   = [ V[3]           for V in self.InitVals]    # Initial uncertainties
-        self.Bounds = [ [ V[1], V[2] ] for V in self.InitVals]    # Parameter bounds
-
-        self.S.__init__(5 * len(self.VarNames))            # updating the cache size
-
-
-        print (' >> Not regarding the following FIXED parameters:')
-        for name in self.FixedVarNames:
-            print('    {:25}'.format(name))
-
-        print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
-        for i_V, name, T, S, B in zip(range(100),self.VarNames, self.Theta0, self.STDs, self.Bounds):
-            print(' {:2} {:30}  [{:7.3f},   {:7.3f} +- {:6.3f}   ,{:7.3f}]'.format(i_V,name[:27], B[0], T, S, B[1] ))
-
-
-    def SetCovMatrix(self, **kwargs):
-        '''
-        Setting covariance matrix of the parameters
-            Cov     : file location of a comma-separated covariance matrix
-            Scale   : The fraction of init. uncertainties to use for a diagonal matrix
-        '''
-        try:
-            self.Cov = np.loadtxt(kwargs["Cov"] , delimiter = ',' )
-            print(" >> Valid Covariance matrix {} found".format(kwargs["Cov"]))
-        except:
-            Scale = kwargs.get("Scale", 1.0)
-            print(#" >> No valid Covariance matric found \n",
-                  " >> Creating diagnonal covariance matrix with scale {}".format(Scale))
-            self.Cov = np.diag([(Scale*var[3])**2 for var in self.InitVals])
-
-
-    def HalfNegChi2(self, theta, Option = 1):
-        return self.Chi2(theta, Option)*(-0.5)
-
-    def Chi2(self, theta, Option = 1):
-        '''
-        This function returns -0.5 Chi^2(theta), the logarithm of the (gaussian) posterior probability
-
-        Option:
-            1 : Normal function call
-            0 : Do not write to log-file
-            2 : Normal function call (meant for gradient calculation)
-            3 : No penalty for out-of-bound parameters (meant for gradient calculation)
-        theta:
-            list or array of parameters to probe
-        '''
-        theta = list(theta)
-        InBoundary = True
-        Flag = str(int(Option)) # This indicates in the log file the type of Chi2 call
-
-        for par, (B_lo, B_up) in zip(theta, self.Bounds):
-            # The bounds, defined in the init file, are in position 1,2 (lower,upper) for each parameter
-            if ((B_lo > par or par > B_up) and Option != 3):
-                chi2 = 2.0e20
-                InBoundary = False
-                Flag = "*"+Flag
-                break
-
-        # Checking if parameter was recently called to avoid USINE-call
-        stock = self.S.Check(theta)
-        if (stock):
-            Flag += "X"
-            chi2 = stock
-        elif InBoundary:
-            Flag += " "
-            chi2 = self.PRP.PyChi2(theta) # Calculate the Chi2 with USINE
-            self.S.Add(theta,chi2)        # Cach resent Chi2 call
-
-        # Writing the Time, Chi2, Flag and theta to the log-file
-        if (bool(Option)):
-            lf = open(self.log_file_name,'a+')
-            lf.write("{:10.3f}  {:12}   {:3}  ".format(time()-self.t0, (round(chi2,4)),  Flag))
-            lf.write('[ ' + ' '.join(["{:10.4f},".format( p ) for p in theta]) + '  ] \n')
-            lf.close()
-
-        return chi2
 
 # PyMC3 Routine
 class MCU(PyUsine):
