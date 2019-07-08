@@ -495,10 +495,14 @@ def RunMC(args):
     for i_I in range(L_I+1, N_I + L_I+1):
         print('\n >> Starging interation {}'.format(i_I))
 
-        if Sampler_Name == 'Hamiltonian':
-            log_file_name = Result_Loc + 'logger_I{}'.format((i_I))
-            MC.log_file_name = log_file_name
-            print(' >> Changing logfile to {}'.format(log_file_name))
+        #if Sampler_Name == 'Hamiltonian':
+        #    log_file_name = Result_Loc + 'logger_I{}'.format((i_I))
+        #    MC.log_file_name = log_file_name
+        #    print(' >> Changing logfile to {}'.format(log_file_name))
+        
+        lf = open(MC.log_file_name,'w')
+        lf.write('\n >> Starting Iteration  {:4} \n'.format(i_I) )
+        lf.close()
 
         data = MC.Sample(N_run)
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
