@@ -4,6 +4,8 @@
 
 #include <TURunPropagation.h>
 
+#include <TUMath.h>
+
 class PyRunPropagation: public TURunPropagation{
 private:
     FILE *f_log;
@@ -11,7 +13,7 @@ private:
 
     std::vector<double> v_pars_all (std::vector<double> const v_pars){
         std::vector<double> v_pars_ (v_pars);
-        for (signed int i = 0; i < FixedIndices.size(); i++){
+        for (signed int i = 0; i < static_cast<int>( FixedIndices.size() ); i++){
             int FI = FixedIndices[i];
             double val = GetFitPars()->GetParEntry(FI)->GetFitInit() ;
             v_pars_.insert(v_pars_.begin()+ FI, val);
@@ -31,7 +33,8 @@ public:
         f_log = fopen(log_filename.c_str(), "w");
     }
 
-    void PySetClass(string const &usine_initfile, Bool_t is_verbose, string const &output_dir){
+    void PySetClass(string const &usine_initfile, Bool_t is_verbose){
+            string const output_dir = "Usine_Out"; // This is a dummy directory
             SetClass(usine_initfile, is_verbose, output_dir, f_log);
             UpdateFitParsAndFitData(usine_initfile, is_verbose, false);
             FixedIndices = PyIndicesPars(1);
@@ -90,6 +93,7 @@ namespace py = pybind11;
 namespace pybind11{
 
 PYBIND11_MODULE(PyProp, m){
+
     // Interface of the original Usine-Class
     class_<TURunPropagation>(m, "TURunPropagation")
         .def(init<>(), "Initializer, not doing anything")
@@ -97,6 +101,7 @@ PYBIND11_MODULE(PyProp, m){
         // .def("GetOutputDir", &TURunPropagation::GetOutputDir)
     // Double_t TURunPropagation::Chi2_TOAFluxes(const Double_t *pars)
         ;
+
 
     // Interface for the inheritated class
     class_<PyRunPropagation, TURunPropagation>(m, "PyRunPropagation")
@@ -110,7 +115,9 @@ PYBIND11_MODULE(PyProp, m){
         // .def("PyIndicesPars", &PyRunPropagation::PyIndicesPars)
         ;
 
-    // m.def("Null", [](double a){return a; } , "a"_a=5.5);
 
-    }
+    //m.def("Null", [](double a){return a; } , "a"_a=5.5);
+ 
+
+    } 
 }

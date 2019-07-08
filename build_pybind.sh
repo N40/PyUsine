@@ -1,6 +1,13 @@
-c++ -O3 -Wall -shared -std=c++11 -fPIC -lpng -lz -lfreetype -lm \
+
+
+echo compiling
+
+c++ -O3 -Wall -shared -std=c++14 -fPIC -fPIC -lpng -lz -lfreetype -lm\
     Wrapper_Code.cpp -o PyProp.so  \
-    -L$USINE/lib -lTUsine -lfparser \
+    -L $(dirname `pwd`)/lib -lTUsine -lfparser\
     `python3 -m pybind11 --includes`\
     `root-config --cflags --glibs --ldflags`\
-    -I$USINE/include
+    -I $(dirname `pwd`)/include \
+    -I pybind11/include
+    
+

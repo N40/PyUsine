@@ -107,22 +107,84 @@ class LogLikeGrad(tt.Op):
         grads = scipy.optimize.approx_fprime(theta, self.likelihood, self.STDs*0.05, self.GradVerbose)
         outputs[0][0] = grads
 
-class Chi2Eval():
+class PyUsine():
     """
     Class in order to mediate the execution and documentation of the Chi2 function calls
     """
-    def __init__(self):
-        self.run = PP.PyRunPropagation()
-        self.InitVals = []
+    def __init__(self, ParFile = None):
+        self.PRP = PP.PyRunPropagation()
         self.t0 = time()
         self.log_file_name = 'logger'
         self.S = Storage_Container(5)
-        self.step = None  # introduced for debugging reasons concerning HamiltonianMC
+        self.Cov = None
 
-    def Chi2(self, theta, Option = 1):
-        return self.HalfNegChi2(theta, Option)*(-2.0)
+        if ParFile:
+            self.InitPar(ParFile)
+
+
+    def InitPar(self, ParFile, log_file_name = None, Theta0 = None):
+        """
+        Loading Usine Configuration and setting all intern parameters correspondingly
+        ParFile         : USINE init file
+        log_file_name   : log file for the Chi2 calls
+        Theta0          : Starting point or point to sample around the starting points
+        """
+
+        if log_file_name:
+            self.log_file_name = log_file_name
+        print (" >> Saving Chi2 calculations in '{}' ".format(self.log_file_name))
+        open(self.log_file_name,'w+').close() # wiping the logfile
+
+        self.ParFile = ParFile
+        print (" >> Loading USINE configuration and parameters from '{}' ".format(self.ParFile))
+
+        self.PRP.PySetLogFile("run.log") # this is the USINE log file, not the MCMC one
+        self.PRP.PySetClass(self.ParFile, 1, "OUT") # "OUT" is a dummy location without use, needed for USINE
+
+        self.InitVals = self.PRP.PyGetInitVals()            # Parameter-wise list of [start, low_bound, up_bound, std]
+        self.VarNames = self.PRP.PyGetFreeParNames()        #
+        self.FixedVarNames = self.PRP.PyGetFixedParNames()
+
+        if Theta0:
+            for i in range(len(self.VarNames)):
+                self.InitVals[i][0] = Theta0[i]
+
+        self.Theta0 = [ V[0]           for V in self.InitVals]    # Initial parameters
+        self.STDs   = [ V[3]           for V in self.InitVals]    # Initial uncertainties
+        self.Bounds = [ [ V[1], V[2] ] for V in self.InitVals]    # Parameter bounds
+
+        self.S.__init__(5 * len(self.VarNames))            # updating the cache size
+
+
+        print (' >> Not regarding the following FIXED parameters:')
+        for name in self.FixedVarNames:
+            print('    {:25}'.format(name))
+
+        print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
+        for i_V, name, T, S, B in zip(range(100),self.VarNames, self.Theta0, self.STDs, self.Bounds):
+            print(' {:2} {:30}  [{:7.3f},   {:7.3f} +- {:6.3f}   ,{:7.3f}]'.format(i_V,name[:27], B[0], T, S, B[1] ))
+
+
+    def SetCovMatrix(self, **kwargs):
+        '''
+        Setting covariance matrix of the parameters
+            Cov     : file location of a comma-separated covariance matrix
+            Scale   : The fraction of init. uncertainties to use for a diagonal matrix
+        '''
+        try:
+            self.Cov = np.loadtxt(kwargs["Cov"] , delimiter = ',' )
+            print(" >> Valid Covariance matrix {} found".format(kwargs["Cov"]))
+        except:
+            Scale = kwargs.get("Scale", 1.0)
+            print(#" >> No valid Covariance matric found \n",
+                  " >> Creating diagnonal covariance matrix with scale {}".format(Scale))
+            self.Cov = np.diag([(Scale*var[3])**2 for var in self.InitVals])
+
 
     def HalfNegChi2(self, theta, Option = 1):
+        return self.Chi2(theta, Option)*(-0.5)
+
+    def Chi2(self, theta, Option = 1):
         '''
         This function returns -0.5 Chi^2(theta), the logarithm of the (gaussian) posterior probability
 
@@ -135,87 +197,44 @@ class Chi2Eval():
             list or array of parameters to probe
         '''
         theta = list(theta)
-        chi2 = 0
         InBoundary = True
         Flag = str(int(Option)) # This indicates in the log file the type of Chi2 call
 
-        for par,val in zip(theta, self.InitVals):
+        for par, (B_lo, B_up) in zip(theta, self.Bounds):
             # The bounds, defined in the init file, are in position 1,2 (lower,upper) for each parameter
-            if ((val[1] > par or par > val[2]) and Option != 3):
+            if ((B_lo > par or par > B_up) and Option != 3):
                 chi2 = 2.0e20
                 InBoundary = False
                 Flag = "*"+Flag
                 break
 
-        # Checking if parameter was recently called to avoid USINE
+        # Checking if parameter was recently called to avoid USINE-call
         stock = self.S.Check(theta)
         if (stock):
             Flag += "X"
             chi2 = stock
         elif InBoundary:
             Flag += " "
-            chi2 = self.run.PyChi2(theta) # Calculate the Chi2 with USINE
+            chi2 = self.PRP.PyChi2(theta) # Calculate the Chi2 with USINE
             self.S.Add(theta,chi2)        # Cach resent Chi2 call
-
-        result = (-0.5*chi2)
 
         # Writing the Time, Chi2, Flag and theta to the log-file
         if (bool(Option)):
             lf = open(self.log_file_name,'a+')
-            lf.write("{:10}  {:15}  {:6}  ".format(round(time()-self.t0,3), round(chi2,3),  Flag))
-            lf.write('[ ' + ' '.join(["{:10},".format(round(p,6)) for p in theta]) + '  ] \n')
+            lf.write("{:10.3f}  {:12}   {:3}  ".format(time()-self.t0, (round(chi2,4)),  Flag))
+            lf.write('[ ' + ' '.join(["{:10.4f},".format( p ) for p in theta]) + '  ] \n')
             lf.close()
 
-        return result
+        return chi2
 
-class MCU(Chi2Eval):
+# PyMC3 Routine
+class MCU(PyUsine):
     """
     This class contains all the steps and routines for generating MCMC Fits
     """
     def __init__(self, **kwargs):
-        self.Cov = None
         self.basic_model = None
         super().__init__()
-
-    def InitPar(self, ParFile, log_file_name = None, Theta0 = None):
-        """
-        Loading Usine Configuration and setting all intern parameters correspondingly
-        ParFile         : USINE init file
-        log_file_name   : log file for the Chi2 calls
-        Theta0          : Starting point or point to sample around the starting points
-        """
-        now = datetime.datetime.now()
-        if log_file_name:
-            self.log_file_name = log_file_name
-        else:
-            self.log_file_name = "logger_" + datetime.datetime.now().strftime("%H_%M_%S")
-        print (' >> Saving Chi2 calculations in {}'.format(self.log_file_name))
-        open(self.log_file_name,'w+').close() # wiping the logfile
-
-        self.ParFile = ParFile
-        print (' >> Loading USINE configuration and parameters from {}'.format(self.ParFile))
-
-        self.run.PySetLogFile("run.log") # this is the USINE log file, not the MCMC one
-        self.run.PySetClass(self.ParFile, 1, "OUT") # "OUT" is a dummy location without use, needed for USINE
-
-        self.InitVals = self.run.PyGetInitVals()            # Parameter-wise list of [start, low_bound, up_bound, std]
-        self.VarNames = self.run.PyGetFreeParNames()        #
-        self.FixedVarNames = self.run.PyGetFixedParNames()
-        self.Theta0 = []    # Initial parameters
-        self.STDs = []      # Initial uncertainties
-        for i in range(len(self.VarNames)):
-            if Theta0: self.InitVals[i][0] = Theta0[i]
-
-            self.Theta0.append(self.InitVals[i][0])
-            self.STDs.append(self.InitVals[i][3])
-
-        print (' >> Not regarding the following FIXED parameters:')
-        for name in self.FixedVarNames:
-            print('{:25}'.format(name))
-
-        print (' >> Using {} free parameters with the following values:'.format(len(self.VarNames)))
-        for name, vals in zip(self.VarNames, self.InitVals):
-            print('{:25}  [{:6.3f},   {:6.3f} +- {:6.3f}   ,{:6.3f}]'.format(name[:22], vals[1], vals[0], vals[3], vals[2]))
 
 
     def Gen_Start_Points(self, sigma = 0.1):
@@ -235,26 +254,15 @@ class MCU(Chi2Eval):
             start_points.append(start)
         return start_points
 
-    def SetCovMatrix(self, **kwargs):
-        '''
-        Setting covariance matrix of the parameters
-            Cov     : file location of a comma-separated covariance matrix
-            Scale   : The fraction of init. uncertainties to use for a diagonal matrix
-        '''
-        try:
-            self.Cov = np.loadtxt(kwargs["Cov"] , delimiter = ',' )
-            print(" >> Valid Covariance matrix {} found".format(kwargs["Cov"]))
-        except:
-            Scale = kwargs.get("Scale", 1.0)
-            print(" >> No valid Covariance matric found",
-                  "\n >> creating diagnonal one with scale {}".format(Scale))
-            self.Cov = np.diag([(Scale*var[3])**2 for var in self.InitVals])
 
+    def InitPyMCBasic(self, **kwargs):
+        '''
+        PyMC3 initialisation: Free parameters, Log-Likelihood function
+        '''
+        # Check if PyUsine is properly initialised
+        if not self.VarNames:
+            self.InitPar(kwargs["ParFile"])
 
-    def InitPyMC(self):
-        '''
-        PyMC3 initialisation: Parameters, Log-Likelihood function
-        '''
         self.basic_model = pm.Model()
         # Setting the extern blackbox function
         ext_fct = TheanWrapperGrad(self.HalfNegChi2, np.array(self.STDs))
@@ -264,9 +272,8 @@ class MCU(Chi2Eval):
             # Setting up the Parameters for MCMC to use (no priors here!)
             Priors = []
             print (' >> Setting up PyMC3 with the {} free parameters and flat priors'.format(len(self.VarNames)))
-            for name, vals in zip(self.VarNames, self.InitVals):
-                #P = pm.Normal(name, mu=vals[0], sd=vals[3]*1.0)
-                P = pm.Uniform(name, lower=vals[1], upper=vals[2])
+            for name, B in zip(self.VarNames, self.Bounds):
+                P = pm.Uniform(name, lower=B[0], upper=B[1])
                 Priors.append(P)
 
             theta = tt.as_tensor_variable(Priors)
@@ -283,16 +290,13 @@ class MCU(Chi2Eval):
             Sampler_Name :
         '''
         #Checking if all the necessary stuff is loaded
-        if not self.VarNames:
-            self.InitPar(kwargs["ParFile"])
+        if not self.basic_model:
+            self.InitPyMCBasic()
         try: self.Cov[0][0]
         except TypeError: self.SetCovMatrix(Scale = 1.2)
-        if not self.basic_model:
-            self.InitPyMC()
+
 
         # Further initialisation
-        print(' >> Logging calculation steps in {}'.format(self.log_file_name) )
-        open(self.log_file_name,'w+').close()
         with self.basic_model:
             Sampler_Name    = kwargs.get("Sampler_Name","Metropolis")
             N_tune          = kwargs.get("N_tune" , 0)
@@ -301,7 +305,7 @@ class MCU(Chi2Eval):
             IsProgressbar   = kwargs.get("IsProgressbar" , 1)
             print ('\n >> using configuration :  {:12}, N_tune = {}, N_chains = {}, N_cores = {}'.format(Sampler_Name,N_tune,N_chains,N_cores))
 
-            self.S = Storage_Container(3*N_chains*len(self.VarNames)) # updating the cach size
+            self.S.__init__(3*N_chains*len(self.VarNames)) # updating the cach size
 
             # Setting up the samplers
             #   Calling S = self.Cov[::-1,::-1] is a neccessary hack in order to avoid a problem in the PyMC3 code:
@@ -314,11 +318,12 @@ class MCU(Chi2Eval):
 
             elif Sampler_Name == "Hamiltonian":
                 # the settings for HMC are very tricky. allowing adapt_step_size=True may lead to very small step sizes causing the method to stuck.
-                length = max(0.3, 1.5*np.sqrt(np.sum(np.array(self.STDs)**2)))  # this is the length in the parameter-space to travel between two points
-                #length = np.sqrt(self.STDs) * np.mean(self.STDs)
+                #length = max(0.3, 1.5*np.sqrt(np.sum(np.array(self.STDs)**2)))  # this is the length in the parameter-space to travel between two points
+                length = np.sqrt(len(self.STDs)) * np.mean(self.STDs)
                 sub_l  = length/7                                               # setting substeps
                 step = pm.HamiltonianMC(scaling = self.Cov[::-1,::-1], adapt_step_size= 0, step_scale = sub_l, path_length = length, is_cov = True )
 
+                self.step = step
                 self.step.adapt_step_size = False   # workaround for PyMC3 bug ( 'adapt_step_size= 0' is ignored)
 
                 print(' >> Hamiltonian settings: {:7.4f} / {:7.4f}  = {:4} substeps between points'.format(length, sub_l/(len(self.STDs)**0.25), int(length / (sub_l/(len(self.STDs)**0.25)) )))
@@ -327,6 +332,7 @@ class MCU(Chi2Eval):
                 print(' >> Unknown Sampler_Name = {:20}, Using Metropolis instead'.format(Sampler_Name))
                 step = pm.Metropolis(S = self.Cov[::-1,::-1], proposal_dist = pm.MultivariateNormalProposal , blocked = True )
 
+            # To be passed to the PyMC3 'sample' function
             self.Custom_sample_args = {
                 "step"        : step,
                 "progressbar" : IsProgressbar,
@@ -414,7 +420,7 @@ class MCU(Chi2Eval):
         return np.cov(post_data.T)
 
 def RunMC(args):
-    now = datetime.datetime.now()
+    # now = datetime.datetime.now()
     log_file_name = "logger" # + '_' + datetime.datetime.now().strftime("%H_%M_%S")
 
     ParFile = args['P']
@@ -444,14 +450,14 @@ def RunMC(args):
         line_no  = int(args['T'][1])
         Theta0 = open(file).readlines()[line_no][:-1]
         Theta0 = list(eval(Theta0))
-        print (Theta0)
+        print (' >> Using custom Theta0: ', Theta0)
 
     try:    os.mkdir(Result_Loc)
     except: pass
 
     MC = MCU()
     MC.InitPar(ParFile, log_file_name, Theta0)
-    MC.InitPyMC()
+    MC.InitPyMCBasic()
 
     if float(args['D']) > 0.0:
         MC.Departure_Deviation = float(args['D'])
@@ -485,19 +491,26 @@ def RunMC(args):
         Sampler_Name = Sampler_Name,
     )
 
+    # Main Loop over iterations
     for i_I in range(L_I+1, N_I + L_I+1):
         print('\n >> Starging interation {}'.format(i_I))
 
-        if Sampler_Name == 'Hamiltonian':
-            log_file_name = Result_Loc + 'logger_I{}'.format((i_I))
-            MC.log_file_name = log_file_name
-            print(' >> Changing logfile to {}'.format(log_file_name))
+        #if Sampler_Name == 'Hamiltonian':
+        #    log_file_name = Result_Loc + 'logger_I{}'.format((i_I))
+        #    MC.log_file_name = log_file_name
+        #    print(' >> Changing logfile to {}'.format(log_file_name))
+        
+        lf = open(MC.log_file_name,'a')
+        lf.write('\n >> Starting Iteration  {:4} \n'.format(i_I) )
+        lf.close()
 
         data = MC.Sample(N_run)
         MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "I{}{}".format(i_I,Key))
+        MC.SaveResults(Result_Loc = Result_Loc, Result_Key = "F", Combined = True)
 
 
-        if(Sampler_Name != 'Hamiltonian' and (i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0):
+        # Covariance matrix update (optional)
+        if( (i_I+1)%args['U'] == 0 and args['U'] > 0 and i_I>0 ):
             New_Cov = MC.GetCovMatrix()*1.5
             cov_file = Result_Loc +'Cov_I{}{}'.format(i_I,Key)
 
@@ -514,9 +527,10 @@ def RunMC(args):
                 else:
                     print(' >> No update of Covariance Matrix due to zero-value in diagonal!')
 
-            MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
             np.savetxt(cov_file, New_Cov, delimiter = ', ', header = ',  '.join(MC.VarNames))
 
+            if (Sampler_Name != 'Hamiltonian'):
+                MC.Custom_sample_args['step'].proposal_dist.__init__(MC.Cov[::-1,::-1])
 
 
 
