@@ -500,7 +500,7 @@ def RunMC(args):
         #    MC.log_file_name = log_file_name
         #    print(' >> Changing logfile to {}'.format(log_file_name))
         
-        lf = open(MC.log_file_name,'w')
+        lf = open(MC.log_file_name,'a')
         lf.write('\n >> Starting Iteration  {:4} \n'.format(i_I) )
         lf.close()
 
